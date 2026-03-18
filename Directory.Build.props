@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- RemoteViewing 1.x ships only .NET Framework targets; it works fine on .NET 10
+         via compatibility shim. Suppress the NU1701 restore warning solution-wide. -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+</Project>

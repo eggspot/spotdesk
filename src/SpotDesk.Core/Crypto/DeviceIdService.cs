@@ -27,9 +27,13 @@ public class DeviceIdService : IDeviceIdService
         {
             raw = GetMacOsSerialNumber();
         }
-        else
+        else if (OperatingSystem.IsWindows())
         {
             raw = GetWindowsMachineGuid();
+        }
+        else
+        {
+            raw = Environment.MachineName;
         }
 
         // Hash so we never store raw machine identifiers
@@ -55,6 +59,7 @@ public class DeviceIdService : IDeviceIdService
         }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static string GetWindowsMachineGuid()
     {
         using var key = Microsoft.Win32.Registry.LocalMachine

@@ -34,7 +34,7 @@
 
   <!-- Sidebar group header -->
   <Style Selector="TextBlock.sidebar-group">
-    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontSize" Value="13"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
     <Setter Property="LetterSpacing" Value="1"/>

@@ -12,6 +12,36 @@ public partial class ImportWizard : Window
     {
         InitializeComponent();
         SetupDragDrop();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (DataContext is ImportWizardViewModel vm)
+            vm.FilePickerRequested += OnFilePickerRequested;
+    }
+
+    private async void OnFilePickerRequested()
+    {
+        if (DataContext is not ImportWizardViewModel vm) return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title          = "Select connection file",
+            AllowMultiple  = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("All supported formats")      { Patterns = ["*.xml", "*.json", "*.rdm", "*.rdf", "*.rdp", "*.mxtsessions"] },
+                new FilePickerFileType("mRemoteNG XML")              { Patterns = ["*.xml"] },
+                new FilePickerFileType("Devolutions RDM XML / JSON") { Patterns = ["*.xml", "*.json", "*.rdm", "*.rdf"] },
+                new FilePickerFileType("MobaXterm sessions")         { Patterns = ["*.mxtsessions"] },
+                new FilePickerFileType("Windows RDP file")           { Patterns = ["*.rdp"] },
+                new FilePickerFileType("All files")                  { Patterns = ["*"] }
+            ]
+        });
+
+        if (files.FirstOrDefault() is IStorageFile file)
+            vm.SetFilePath(file.Path.LocalPath);
     }
 
     private void SetupDragDrop()

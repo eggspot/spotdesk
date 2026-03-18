@@ -145,13 +145,23 @@ Default: Dark. `ThemeService.SetTheme(AppTheme)` drives `RequestedThemeVariant`.
 
 ---
 
+## Performance — Primary Focus
+
+**SpotDesk's core promise is speed. Every change must consider its performance impact first.**
+
+- Tab switch **<50ms** — reattach existing framebuffer, never reconnect on switch.
+- Vault unlock after re-derive **<100ms**.
+- **No spinner for anything under 200ms.**
+- Transitions: **120ms ease-out only**. Never animate what the user is actively controlling.
+- Use **zero-allocation patterns** in hot paths: `stackalloc`, `{x:Static}` converter singletons, avoid closures in tight loops.
+- Avoid LINQ in hot paths (tab switching, sidebar rendering, resize drag, connection tree filtering).
+- Pointer capture on drag handles — no global mouse hooks.
+- When two approaches are equivalent in correctness, always choose the faster one.
+
 ## Design Constraints
 
 - **No reflection, no dynamic dispatch** — all types must be NativeAOT safe. JSON via source-gen `JsonSerializerContext`.
 - **All ViewModels**: `CommunityToolkit.Mvvm` with source gen (`[ObservableProperty]`, `[RelayCommand]`).
-- **Transitions**: 120ms ease-out. Never animate what the user is actively controlling.
-- **No spinner for anything under 200ms.**
-- Tab switch <50ms; vault unlock after re-derive <100ms.
 - Status dot colors: `StatusConnected=#22C55E`, `StatusConnecting=#F59E0B`, `StatusError=#EF4444`, `StatusIdle=#6B7280`.
 
 ---

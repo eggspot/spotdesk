@@ -3,41 +3,41 @@
              xmlns:vm="using:SpotDesk.UI.ViewModels"
              xmlns:controls="using:SpotDesk.UI.Controls"
              x:Class="SpotDesk.UI.Views.SidebarView"
-             x:DataType="vm:ConnectionTreeViewModel"
-             Width="240">
+             x:DataType="vm:ConnectionTreeViewModel">
 
-  <Grid RowDefinitions="40,Auto,*,Auto">
+  <Grid RowDefinitions="44,Auto,*,Auto">
 
-    <!-- Sidebar header: title + Reconnect All button -->
+    <!-- Sidebar header -->
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto"
-          Margin="12,0"
+          Margin="14,0"
           VerticalAlignment="Center">
       <TextBlock Grid.Column="0"
                  Text="CONNECTIONS"
-                 FontSize="12" FontWeight="Medium"
+                 FontSize="11" FontWeight="SemiBold"
                  Foreground="{DynamicResource TextTertiaryBrush}"
+                 LetterSpacing="2"
                  VerticalAlignment="Center"/>
       <Button Grid.Column="1"
               Classes="ghost-button"
               ToolTip.Tip="Reconnect all disconnected sessions"
               Command="{Binding ReconnectAllCommand}"
-              Padding="4">
-        <TextBlock Text="⟳" FontSize="14"
+              Padding="6">
+        <TextBlock Text="⟳" FontSize="15"
                    Foreground="{DynamicResource TextSecondaryBrush}"/>
       </Button>
     </Grid>
 
     <!-- Search box -->
-    <Border Grid.Row="1" Margin="8,4" Padding="8,6"
+    <Border Grid.Row="1" Margin="8,0,8,6" Padding="8,7"
             Background="{DynamicResource BgElevatedBrush}"
             CornerRadius="6"
             BorderBrush="{DynamicResource BorderSubtleBrush}"
             BorderThickness="1">
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBlock Text="◉" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+        <TextBlock Text="⌕" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}"
                    VerticalAlignment="Center"/>
         <TextBox Text="{Binding SearchQuery}"
-                 Watermark="Search...  ⌘K"
+                 Watermark="Search...  Ctrl+K"
                  Background="Transparent"
                  BorderThickness="0"
                  FontSize="13"
@@ -52,37 +52,7 @@
       <ItemsControl ItemsSource="{Binding Groups}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ConnectionGroupViewModel">
-            <StackPanel>
-              <!-- Group header -->
-              <Button Background="Transparent" BorderThickness="0"
-                      Padding="12,6" HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Stretch"
-                      Command="{Binding ToggleExpandCommand}">
-                <Grid ColumnDefinitions="16,*,Auto">
-                  <TextBlock Grid.Column="0"
-                             Text="{Binding IsExpanded, Converter={StaticResource ExpandArrowConverter}}"
-                             FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
-                             VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="1"
-                             Text="{Binding Group.Name}"
-                             Classes="sidebar-group" VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="2"
-                             Text="{Binding Entries.Count, StringFormat='({0})'}"
-                             FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
-                             VerticalAlignment="Center"/>
-                </Grid>
-              </Button>
-
-              <!-- Entries -->
-              <ItemsControl ItemsSource="{Binding Entries}"
-                            IsVisible="{Binding IsExpanded}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <controls:ConnectionListItem/>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
+            <controls:ConnectionGroupItem/>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
@@ -91,7 +61,8 @@
     <!-- Add connection button -->
     <Button Grid.Row="3" Classes="ghost-button"
             Margin="8,4" HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Stretch">
+            HorizontalContentAlignment="Stretch"
+            Command="{Binding NewConnectionCommand}">
       <TextBlock Text="+ Add Connection" FontSize="13"
                  Foreground="{DynamicResource TextSecondaryBrush}"/>
     </Button>

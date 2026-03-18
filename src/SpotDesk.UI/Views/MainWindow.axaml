@@ -32,35 +32,103 @@
     <KeyBinding Gesture="Ctrl+D9" Command="{Binding SwitchToTab9Command}"/>
   </Window.KeyBindings>
 
-  <Grid RowDefinitions="40,*">
+  <Window.Styles>
+    <!-- Window chrome hover states -->
+    <Style Selector="Button#CloseButton:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#C42B1C"/>
+    </Style>
+    <Style Selector="Button#CloseButton:pointerover TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button#MinimizeButton:pointerover /template/ ContentPresenter,
+                     Button#MaximizeButton:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}"/>
+    </Style>
+  </Window.Styles>
 
-    <!-- TAB BAR / TITLE BAR (40px) — drag region for window move -->
+  <Grid RowDefinitions="40,40,*">
+
+    <!-- TITLE BAR (40px) — drag region + app identity + chrome -->
     <Border Grid.Row="0"
             x:Name="TitleBar"
             Background="{DynamicResource BgSurfaceBrush}"
             BorderBrush="{DynamicResource BorderSubtleBrush}"
             BorderThickness="0,0,0,1">
-    <Grid ColumnDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,*,Auto">
 
-      <!-- Sidebar toggle + app name -->
-      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" Margin="12,0">
-        <Button Classes="ghost-button" Command="{Binding ToggleSidebarCommand}"
-                ToolTip.Tip="Toggle sidebar (Ctrl+\)">
-          <TextBlock Text="≡" FontSize="16"/>
-        </Button>
-        <TextBlock Text="SpotDesk" FontSize="14" FontWeight="Medium"
-                   Foreground="{DynamicResource TextPrimaryBrush}"
-                   VerticalAlignment="Center"/>
-      </StackPanel>
+        <!-- App name (no hamburger — sidebar toggle lives in activity strip) -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" Margin="12,0">
+          <Image x:Name="TitleBarIcon" Width="18" Height="18" VerticalAlignment="Center"/>
+          <TextBlock Text="SpotDesk" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextPrimaryBrush}"
+                     VerticalAlignment="Center"/>
+        </StackPanel>
 
-      <!-- Tab strip -->
-      <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto"
+        <!-- Drag area (empty — BeginMoveDrag wired in code-behind) -->
+        <Border Grid.Column="1"/>
+
+        <!-- App buttons + window chrome -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch" Spacing="0" Margin="4,0,0,0">
+          <Button Classes="ghost-button" Command="{Binding ForceSyncCommand}"
+                  ToolTip.Tip="Sync vault (Ctrl+Shift+S)" Margin="0,0,4,0">
+            <TextBlock Text="↑" FontSize="14"/>
+          </Button>
+          <Button Classes="ghost-button" Command="{Binding OpenSettingsCommand}"
+                  ToolTip.Tip="Settings (Ctrl+,)" Margin="0,0,8,0">
+            <TextBlock Text="⚙" FontSize="14"/>
+          </Button>
+
+          <!-- Separator -->
+          <Border Width="1" Margin="0,8" Background="{DynamicResource BorderSubtleBrush}"/>
+
+          <!-- Min / Max / Close -->
+          <Button x:Name="MinimizeButton"
+                  Width="46" Height="40"
+                  Background="Transparent" BorderThickness="0"
+                  CornerRadius="0"
+                  ToolTip.Tip="Minimize">
+            <TextBlock Text="&#x2015;" FontSize="18" HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+          </Button>
+          <Button x:Name="MaximizeButton"
+                  Width="46" Height="40"
+                  Background="Transparent" BorderThickness="0"
+                  CornerRadius="0"
+                  ToolTip.Tip="Maximize / Restore">
+            <TextBlock x:Name="MaximizeIcon" Text="&#x25A1;" FontSize="16"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+          </Button>
+          <Button x:Name="CloseButton"
+                  Width="46" Height="40"
+                  Background="Transparent" BorderThickness="0"
+                  CornerRadius="0"
+                  ToolTip.Tip="Close">
+            <TextBlock Text="&#x2715;" FontSize="16" HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- TAB BAR (40px) — dedicated row below title bar -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource BgSurfaceBrush}"
+            BorderBrush="{DynamicResource BorderSubtleBrush}"
+            BorderThickness="0,0,0,1">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto"
                     VerticalScrollBarVisibility="Disabled">
-        <StackPanel Orientation="Horizontal">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">
           <Button Classes="ghost-button" Command="{Binding NewConnectionCommand}"
-                  Margin="4,0" ToolTip.Tip="New connection (Ctrl+N)">
+                  Margin="4,0" ToolTip.Tip="New connection (Ctrl+N)"
+                  VerticalAlignment="Center">
             <TextBlock Text="+ New" FontSize="13"/>
           </Button>
+          <!-- Thin vertical separator -->
+          <Border Width="1" Margin="4,10" Background="{DynamicResource BorderSubtleBrush}"/>
           <ItemsControl ItemsSource="{Binding Tabs}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -75,72 +143,98 @@
           </ItemsControl>
         </StackPanel>
       </ScrollViewer>
-
-      <!-- App buttons + window chrome -->
-      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch" Spacing="0" Margin="4,0,0,0">
-        <Button Classes="ghost-button" Command="{Binding ForceSyncCommand}"
-                ToolTip.Tip="Sync vault (Ctrl+Shift+S)" Margin="0,0,4,0">
-          <TextBlock Text="↑" FontSize="14"/>
-        </Button>
-        <Button Classes="ghost-button" Command="{Binding OpenSettingsCommand}"
-                ToolTip.Tip="Settings (Ctrl+,)" Margin="0,0,8,0">
-          <TextBlock Text="⚙" FontSize="14"/>
-        </Button>
-
-        <!-- Separator -->
-        <Border Width="1" Margin="0,8" Background="{DynamicResource BorderSubtleBrush}"/>
-
-        <!-- Min / Max / Close -->
-        <Button x:Name="MinimizeButton"
-                Width="46" Height="40"
-                Background="Transparent" BorderThickness="0"
-                ToolTip.Tip="Minimize">
-          <TextBlock Text="&#x2212;" FontSize="14" HorizontalAlignment="Center"
-                     Foreground="{DynamicResource TextSecondaryBrush}"/>
-        </Button>
-        <Button x:Name="MaximizeButton"
-                Width="46" Height="40"
-                Background="Transparent" BorderThickness="0"
-                ToolTip.Tip="Maximize / Restore">
-          <TextBlock x:Name="MaximizeIcon" Text="&#x25A1;" FontSize="11"
-                     HorizontalAlignment="Center"
-                     Foreground="{DynamicResource TextSecondaryBrush}"/>
-        </Button>
-        <Button x:Name="CloseButton"
-                Width="46" Height="40"
-                Background="Transparent" BorderThickness="0"
-                ToolTip.Tip="Close">
-          <TextBlock Text="&#x2715;" FontSize="13" HorizontalAlignment="Center"
-                     Foreground="{DynamicResource TextSecondaryBrush}"/>
-        </Button>
-      </StackPanel>
-    </Grid>
     </Border>
 
-    <!-- CONTENT AREA -->
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+    <!-- CONTENT AREA with activity strip + sidebar overlay support -->
+    <Grid Grid.Row="2" ColumnDefinitions="36,*">
 
-      <!-- SIDEBAR -->
+      <!-- Activity strip — always-visible left bar for sidebar toggle/pin -->
       <Border Grid.Column="0"
-              Width="{Binding IsSidebarVisible, Converter={StaticResource SidebarWidthConverter}}"
               Background="{DynamicResource BgSurfaceBrush}"
               BorderBrush="{DynamicResource BorderSubtleBrush}"
-              BorderThickness="0,0,1,0"
-              IsVisible="{Binding IsSidebarVisible}">
+              BorderThickness="0,0,1,0">
+        <StackPanel VerticalAlignment="Top" Margin="0,8,0,0" Spacing="4">
+          <!-- Sidebar toggle -->
+          <Button Classes="ghost-button"
+                  Width="36" Height="36" Padding="0"
+                  ToolTip.Tip="Toggle sidebar (Ctrl+\)"
+                  Command="{Binding ToggleSidebarCommand}">
+            <TextBlock Text="⬜" FontSize="13"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+          </Button>
+          <!-- Pin indicator -->
+          <Button Classes="ghost-button"
+                  Width="36" Height="36" Padding="0"
+                  ToolTip.Tip="Pin/unpin sidebar"
+                  Command="{Binding ToggleSidebarPinCommand}">
+            <TextBlock Text="{Binding SidebarPinIcon}"
+                       FontSize="12"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextTertiaryBrush}"/>
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- Main area: sidebar + content -->
+      <Panel Grid.Column="1">
+
+      <!-- Pinned layout: sidebar + resize handle + content -->
+      <Grid x:Name="ContentGrid" ColumnDefinitions="Auto,4,*">
+
+        <!-- Sidebar (pinned mode) -->
+        <Border Grid.Column="0"
+                Width="{Binding EffectiveSidebarWidth}"
+                MinWidth="0" MaxWidth="520"
+                Background="{DynamicResource BgSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,0,1,0">
+          <views:SidebarView DataContext="{Binding ConnectionTree}"
+                             IsVisible="{Binding IsSidebarPinned}"/>
+        </Border>
+
+        <!-- Resize handle (pinned + visible only) -->
+        <Border Grid.Column="1"
+                x:Name="SidebarResizeHandle"
+                Background="{DynamicResource BorderSubtleBrush}"
+                Cursor="SizeWestEast"
+                Opacity="0.4"
+                IsVisible="{Binding IsSidebarPinned}"/>
+
+        <!-- Content -->
+        <Grid Grid.Column="2" Background="{DynamicResource BgBaseBrush}">
+          <views:WelcomeView IsVisible="{Binding IsWelcomeVisible}"/>
+          <!-- Active session view rendered by SessionTabView -->
+          <ContentControl Content="{Binding ActiveTab}"
+                          IsVisible="{Binding !IsWelcomeVisible}">
+            <ContentControl.ContentTemplate>
+              <local:SessionViewSelector/>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+        </Grid>
+      </Grid>
+
+      <!-- Overlay backdrop (unpinned + open) -->
+      <Border ZIndex="9"
+              Background="#60000000"
+              IsVisible="{Binding IsSidebarOverlayOpen}"
+              x:Name="SidebarBackdrop"/>
+
+      <!-- Overlay sidebar (unpinned + open) -->
+      <Border ZIndex="10"
+              Width="{Binding SidebarWidth}"
+              HorizontalAlignment="Left"
+              IsVisible="{Binding IsSidebarOverlayOpen}"
+              Background="{DynamicResource BgSurfaceBrush}"
+              BorderBrush="{DynamicResource BorderSubtleBrush}"
+              BorderThickness="0,0,1,0">
         <views:SidebarView DataContext="{Binding ConnectionTree}"/>
       </Border>
 
-      <!-- SESSION PANE -->
-      <Grid Grid.Column="1" Background="{DynamicResource BgBaseBrush}">
-        <views:WelcomeView IsVisible="{Binding IsWelcomeVisible}"/>
-        <!-- Active session view rendered by SessionTabView -->
-        <ContentControl Content="{Binding ActiveTab}"
-                        IsVisible="{Binding !IsWelcomeVisible}">
-          <ContentControl.ContentTemplate>
-            <local:SessionViewSelector/>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-      </Grid>
+      </Panel>
+
     </Grid>
   </Grid>
 

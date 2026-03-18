@@ -39,6 +39,8 @@ public partial class ImportWizardViewModel : ObservableObject
 {
     private readonly IDevolutionsImporter? _rdmImporter;
     private readonly IRdpFileImporter?     _rdpImporter;
+    private readonly IMRemoteNgImporter?   _mrnImporter;
+    private readonly IMobaXtermImporter?   _mobaImporter;
 
     // ── Step ─────────────────────────────────────────────────────────────
     [ObservableProperty]
@@ -89,7 +91,7 @@ public partial class ImportWizardViewModel : ObservableObject
     public bool CanGoNext => CurrentStep switch
     {
         WizardStep.SelectFile => HasSelectedFile,
-        WizardStep.Configure  => true,
+        WizardStep.Configure  => PreviewItems.Count > 0,
         WizardStep.Confirm    => true,
         WizardStep.Result     => true,
         _                     => false
@@ -109,7 +111,12 @@ public partial class ImportWizardViewModel : ObservableObject
     public bool HasSelectedFile => !string.IsNullOrEmpty(SelectedFilePath);
 
     // ── Preview ───────────────────────────────────────────────────────────
-    [ObservableProperty] private int _previewCount;
+    [ObservableProperty] private int    _previewCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGoNext))]
+    [NotifyPropertyChangedFor(nameof(HasPreviewWarning))]
+    private string _previewWarning = string.Empty;
+    public bool HasPreviewWarning => !string.IsNullOrEmpty(PreviewWarning);
     public ObservableCollection<ImportPreviewItem> PreviewItems { get; } = [];
 
     // ── Confirm step ──────────────────────────────────────────────────────
@@ -131,22 +138,33 @@ public partial class ImportWizardViewModel : ObservableObject
     public event Action? CloseRequested;
     public event Action? OpenConnectionTreeRequested;
 
+    /// <summary>
+    /// Raised when the user clicks Browse. The view must show a file picker
+    /// and call <see cref="SetFilePath"/> with the chosen path.
+    /// </summary>
+    public event Action? FilePickerRequested;
+
+    /// <summary>Raised after a successful import with per-entry (entry, group) pairs.</summary>
+    public event Action<IReadOnlyList<(ConnectionEntry Entry, string Group)>>? EntriesImported;
+
     public ImportWizardViewModel(
-        IDevolutionsImporter? rdmImporter = null,
-        IRdpFileImporter?     rdpImporter = null)
+        IDevolutionsImporter? rdmImporter  = null,
+        IRdpFileImporter?     rdpImporter  = null,
+        IMRemoteNgImporter?   mrnImporter  = null,
+        IMobaXtermImporter?   mobaImporter = null)
     {
-        _rdmImporter = rdmImporter;
-        _rdpImporter = rdpImporter;
+        _rdmImporter  = rdmImporter;
+        _rdpImporter  = rdpImporter;
+        _mrnImporter  = mrnImporter;
+        _mobaImporter = mobaImporter;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────
 
     [RelayCommand]
-    private async Task BrowseFileAsync()
+    private void BrowseFile()
     {
-        // File picker is opened from the dialog code-behind; this command
-        // provides a hook for the platform storage API.
-        await Task.CompletedTask;
+        FilePickerRequested?.Invoke();
     }
 
     [RelayCommand]
@@ -201,6 +219,22 @@ public partial class ImportWizardViewModel : ObservableObject
     private void OpenConnectionTree() => OpenConnectionTreeRequested?.Invoke();
 
     [RelayCommand]
+    private void ImportAnother()
+    {
+        SelectedFilePath  = null;
+        SelectedFileName  = string.Empty;
+        DetectedFormat    = string.Empty;
+        MasterKey         = string.Empty;
+        NeedsMasterKey    = false;
+        PreviewWarning    = string.Empty;
+        ImportProgress    = 0;
+        ImportedCount     = 0;
+        SkippedCount      = 0;
+        PreviewItems.Clear();
+        CurrentStep = WizardStep.SelectFile;
+    }
+
+    [RelayCommand]
     private void SelectNext() { }
 
     [RelayCommand]
@@ -216,21 +250,45 @@ public partial class ImportWizardViewModel : ObservableObject
         NeedsMasterKey   = DetectedFormat == "RDM (encrypted)";
     }
 
-    private static string DetectFormat(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    private static string DetectFormat(string path)
     {
-        ".rdp"  => "Windows RDP file",
-        ".rdf"  => "RDM (encrypted)",
-        ".json" => "SpotDesk JSON",
-        ".xml"  => "RDM XML",
-        _       => "Unknown"
-    };
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext switch
+        {
+            ".rdp"         => "Windows RDP file",
+            ".rdf"         => "RDM (encrypted)",
+            ".json"        => "RDM JSON",
+            ".xml"         => SniffXmlFormat(path),
+            ".mxtsessions" => "MobaXterm sessions",
+            _              => "Unknown"
+        };
+    }
+
+    /// <summary>Peeks at the first 1 KB of an XML file to tell RDM XML from mRemoteNG XML.</summary>
+    private static string SniffXmlFormat(string path)
+    {
+        try
+        {
+            Span<byte> buf = stackalloc byte[1024];
+            using var fs = File.OpenRead(path);
+            var read = fs.Read(buf);
+            var snippet = System.Text.Encoding.UTF8.GetString(buf[..read]);
+            if (snippet.Contains("mremoteng.org", StringComparison.OrdinalIgnoreCase) ||
+                snippet.Contains("ConfVersion",   StringComparison.Ordinal))
+                return "mRemoteNG XML";
+        }
+        catch { /* fall through to default */ }
+        return "RDM XML";
+    }
 
     private async Task LoadPreviewAsync()
     {
         PreviewItems.Clear();
+        PreviewWarning = string.Empty;
         if (SelectedFilePath is null) return;
 
         IReadOnlyList<ConnectionEntry> entries = [];
+        string? loadError = null;
 
         try
         {
@@ -238,14 +296,18 @@ public partial class ImportWizardViewModel : ObservableObject
             {
                 "Windows RDP file" when _rdpImporter is not null =>
                     await _rdpImporter.ImportAsync(SelectedFilePath),
-                "RDM (encrypted)" or "RDM XML" when _rdmImporter is not null =>
+                "RDM (encrypted)" or "RDM XML" or "RDM JSON" when _rdmImporter is not null =>
                     await _rdmImporter.ImportAsync(SelectedFilePath, NeedsMasterKey ? MasterKey : null),
+                "mRemoteNG XML" when _mrnImporter is not null =>
+                    await _mrnImporter.ImportAsync(SelectedFilePath),
+                "MobaXterm sessions" when _mobaImporter is not null =>
+                    await _mobaImporter.ImportAsync(SelectedFilePath),
                 _ => []
             };
         }
-        catch
+        catch (Exception ex)
         {
-            // Show empty list on error — user can try again
+            loadError = ex.Message;
         }
 
         foreach (var e in entries)
@@ -258,6 +320,13 @@ public partial class ImportWizardViewModel : ObservableObject
             });
 
         PreviewCount = PreviewItems.Count;
+
+        if (loadError is not null)
+            PreviewWarning = $"Could not read file: {loadError}";
+        else if (PreviewItems.Count == 0)
+            PreviewWarning = "No compatible connections found in this file. Only RDP, SSH, and VNC connections are supported.";
+
+        OnPropertyChanged(nameof(CanGoNext));
     }
 
     private void BuildImportSummary()
@@ -285,5 +354,12 @@ public partial class ImportWizardViewModel : ObservableObject
 
         SkippedCount = PreviewItems.Count(x => !x.IsSelected);
         CurrentStep  = WizardStep.Result;
+
+        // Notify the host so it can add entries to the connection tree
+        // Each entry carries its own group: use Tags[0] if present, else fall back to the wizard TargetGroup
+        var imported = toImport
+            .Select(i => (i.Source, i.Source.Tags.FirstOrDefault() is { } g ? g : TargetGroup))
+            .ToList();
+        EntriesImported?.Invoke(imported);
     }
 }

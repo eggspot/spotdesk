@@ -11,6 +11,7 @@ public record ConnectionEntry
     public Guid? GroupId { get; set; }
     public string[] Tags { get; set; } = [];
     public bool IsFavorite { get; set; }
+    public bool RememberPassword { get; set; } = false;
     public DateTimeOffset? LastConnectedAt { get; set; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

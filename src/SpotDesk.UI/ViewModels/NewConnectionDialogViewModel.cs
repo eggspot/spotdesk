@@ -25,12 +25,15 @@ public partial class NewConnectionDialogViewModel : ObservableObject
 
     // SSH
     [ObservableProperty] private string _sshKeyPath = string.Empty;
+    [ObservableProperty] private bool   _rememberPassword = true;
 
     // RDP advanced
     [ObservableProperty] private int  _desktopWidth           = 1920;
     [ObservableProperty] private int  _desktopHeight          = 1080;
     [ObservableProperty] private bool _enableDriveRedirection = false;
     [ObservableProperty] private bool _enableRemoteFx         = true;
+
+    [ObservableProperty] private string _title = "New Connection";
 
     public bool IsRdp => Protocol == Protocol.Rdp;
     public bool IsSsh => Protocol == Protocol.Ssh;
@@ -49,20 +52,53 @@ public partial class NewConnectionDialogViewModel : ObservableObject
         Port = ConnectionEntry.DefaultPortFor(value);
     }
 
+    public void LoadFromEntry(ConnectionEntry entry, string groupName)
+    {
+        Title           = "Edit Connection";
+        Protocol        = entry.Protocol;
+        Name            = entry.Name;
+        Host            = entry.Host;
+        Port            = entry.Port;
+        Group           = groupName;
+        Tags            = string.Join(", ", entry.Tags);
+        RememberPassword = entry.RememberPassword;
+        if (entry.DesktopWidth.HasValue)  DesktopWidth  = entry.DesktopWidth.Value;
+        if (entry.DesktopHeight.HasValue) DesktopHeight = entry.DesktopHeight.Value;
+        EnableDriveRedirection = entry.EnableDriveRedirection;
+        EnableRemoteFx         = entry.EnableRemoteFx;
+    }
+
+    public void ApplyToEntry(ConnectionEntry entry)
+    {
+        entry.Name                  = Name.Trim();
+        entry.Host                  = Host.Trim();
+        entry.Port                  = Port;
+        entry.Protocol              = Protocol;
+        entry.DesktopWidth          = IsRdp ? DesktopWidth  : null;
+        entry.DesktopHeight         = IsRdp ? DesktopHeight : null;
+        entry.EnableRemoteFx        = EnableRemoteFx;
+        entry.EnableDriveRedirection = EnableDriveRedirection;
+        entry.Tags                  = Tags.Split(',',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        entry.RememberPassword      = RememberPassword;
+        entry.UpdatedAt             = DateTimeOffset.UtcNow;
+    }
+
     /// <summary>Builds a ConnectionEntry from the current ViewModel state.</summary>
     public ConnectionEntry BuildEntry() => new()
     {
-        Name                  = Name.Trim(),
-        Host                  = Host.Trim(),
-        Port                  = Port,
-        Protocol              = Protocol,
-        DesktopWidth          = IsRdp ? DesktopWidth  : null,
-        DesktopHeight         = IsRdp ? DesktopHeight : null,
-        EnableRemoteFx        = EnableRemoteFx,
+        Name                   = Name.Trim(),
+        Host                   = Host.Trim(),
+        Port                   = Port,
+        Protocol               = Protocol,
+        DesktopWidth           = IsRdp ? DesktopWidth  : null,
+        DesktopHeight          = IsRdp ? DesktopHeight : null,
+        EnableRemoteFx         = EnableRemoteFx,
         EnableDriveRedirection = EnableDriveRedirection,
-        Tags                  = Tags.Split(',',
+        RememberPassword       = RememberPassword,
+        Tags                   = Tags.Split(',',
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-        UpdatedAt             = DateTimeOffset.UtcNow,
+        UpdatedAt              = DateTimeOffset.UtcNow,
     };
 
     /// <summary>
@@ -76,11 +112,14 @@ public partial class NewConnectionDialogViewModel : ObservableObject
 
         if (!hasUser && !hasSshKey) return null;
 
+        // If RememberPassword is false, store username but not the password
+        var password = RememberPassword && !string.IsNullOrEmpty(Password) ? Password : null;
+
         return new CredentialEntry
         {
             Name       = Name.Trim().Length > 0 ? Name.Trim() : Host.Trim(),
             Username   = Username.Trim(),
-            Password   = string.IsNullOrEmpty(Password) ? null : Password,
+            Password   = password,
             SshKeyPath = hasSshKey ? SshKeyPath.Trim() : null,
             Type       = hasSshKey ? CredentialType.SshKey : CredentialType.UsernamePassword,
             UpdatedAt  = DateTimeOffset.UtcNow,

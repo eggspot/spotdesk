@@ -57,6 +57,9 @@ public record LocalPrefs
     [JsonPropertyName("sidebarWidth")]
     public double SidebarWidth { get; init; } = 240;
 
+    [JsonPropertyName("sidebarPinned")]
+    public bool SidebarPinned { get; init; } = true;
+
     [JsonPropertyName("terminalFontSize")]
     public int TerminalFontSize { get; init; } = 13;
 
@@ -69,6 +72,9 @@ public record LocalPrefs
     /// <summary>"github" (default, requires sign-in + Git repo) or "local" (password-only, no sync).</summary>
     [JsonPropertyName("vaultMode")]
     public string VaultMode { get; init; } = "github";
+
+    [JsonPropertyName("autoSyncInterval")]
+    public string? AutoSyncInterval { get; init; }
 
     [JsonPropertyName("tabOrder")]
     public List<Guid> TabOrder { get; init; } = [];

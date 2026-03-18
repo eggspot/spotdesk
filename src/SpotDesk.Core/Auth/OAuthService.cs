@@ -93,7 +93,7 @@ public class OAuthService : IOAuthService
         var authUrl = "https://github.com/login/oauth/authorize" +
             $"?client_id={Uri.EscapeDataString(_config.GitHubClientId)}" +
             $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
-            $"&scope={Uri.EscapeDataString("read:user repo")}" +
+            $"&scope={Uri.EscapeDataString("read:user")}" +
             $"&state={Uri.EscapeDataString(state)}" +
             $"&code_challenge={Uri.EscapeDataString(challenge)}" +
             $"&code_challenge_method=S256" +
@@ -218,7 +218,7 @@ public class OAuthService : IOAuthService
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["client_id"] = clientId,
-                ["scope"]     = "read:user repo",
+                ["scope"]     = "read:user",
             })
         };
         req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));

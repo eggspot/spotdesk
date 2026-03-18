@@ -3,7 +3,7 @@
         xmlns:vm="using:SpotDesk.UI.ViewModels"
         x:Class="SpotDesk.UI.Dialogs.NewConnectionDialog"
         x:DataType="vm:NewConnectionDialogViewModel"
-        Title="New Connection"
+        Title="{Binding Title}"
         Width="480" SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
@@ -63,7 +63,7 @@
                CornerRadius="6"/>
     </StackPanel>
 
-    <!-- Password -->
+    <!-- Password + remember option -->
     <StackPanel Spacing="6">
       <TextBlock Text="Password" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
       <TextBox Text="{Binding Password}" PasswordChar="•"
@@ -71,6 +71,10 @@
                Background="{DynamicResource BgSurfaceBrush}"
                BorderBrush="{DynamicResource BorderDefaultBrush}"
                CornerRadius="6"/>
+      <CheckBox Content="Remember password (auto-connect)"
+                IsChecked="{Binding RememberPassword}"
+                Foreground="{DynamicResource TextSecondaryBrush}"
+                FontSize="12"/>
     </StackPanel>
 
     <!-- Group + Tags -->

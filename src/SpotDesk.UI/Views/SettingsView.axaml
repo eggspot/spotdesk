@@ -29,13 +29,11 @@
             <StackPanel Spacing="8">
               <TextBlock Text="Auto-sync interval"
                          FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              <ComboBox SelectedItem="{Binding AutoSyncInterval}"
-                        Width="200">
-                <ComboBoxItem Content="1 min"/>
-                <ComboBoxItem Content="5 min"/>
-                <ComboBoxItem Content="15 min"/>
-                <ComboBoxItem Content="Manual only"/>
-              </ComboBox>
+              <TextBlock Text="How often SpotDesk syncs the vault to your repository."
+                         FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.SyncIntervalOptions}"
+                        SelectedItem="{Binding AutoSyncInterval}"
+                        Width="200"/>
             </StackPanel>
 
             <StackPanel Spacing="8">
@@ -89,35 +87,35 @@
               </StackPanel>
             </Border>
 
-            <!-- ── GitHub Sync ── -->
+            <!-- ── GitHub Identity ── -->
             <StackPanel Spacing="8">
-              <TextBlock Text="GitHub Sync"
+              <TextBlock Text="GitHub Identity"
                          FontSize="14" FontWeight="Medium"
                          Foreground="{DynamicResource TextPrimaryBrush}"/>
+              <TextBlock FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                         TextWrapping="Wrap" MaxWidth="480"
+                         Text="Used to identify you and derive your vault encryption key. Requests read:user scope only — no repository access."/>
 
-              <!-- Not connected + no device flow in progress -->
-              <StackPanel Spacing="8"
-                          IsVisible="{Binding !IsGitHubConnected}">
-                <Button Classes="primary-button" Content="Connect GitHub"
+              <!-- Not connected -->
+              <StackPanel Spacing="8" IsVisible="{Binding !IsGitHubConnected}">
+                <Button Classes="primary-button" Content="Sign in with GitHub"
                         IsVisible="{Binding !IsDeviceFlowActive}"
-                        Command="{Binding ConnectGitHubCommand}"/>
+                        Command="{Binding ConnectGitHubCommand}"
+                        ToolTip.Tip="Opens GitHub in your browser. Only requests your profile (read:user) — no repo access."/>
 
-                <!-- Device Flow in progress: show code + status + cancel -->
+                <!-- Device Flow in progress -->
                 <StackPanel Spacing="8" IsVisible="{Binding IsDeviceFlowActive}">
                   <TextBlock Text="Enter this code at github.com/activate:"
-                             FontSize="12"
-                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                             FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <Border Background="{DynamicResource BgSurfaceBrush}"
-                          CornerRadius="8" Padding="16,8"
-                          HorizontalAlignment="Left">
+                          CornerRadius="8" Padding="16,8" HorizontalAlignment="Left">
                     <TextBlock Text="{Binding DeviceFlowUserCode}"
                                FontSize="24" FontWeight="Bold" LetterSpacing="3"
                                FontFamily="{DynamicResource FontMono}"
                                Foreground="{DynamicResource AccentTextBrush}"/>
                   </Border>
                   <TextBlock Text="{Binding DeviceFlowStatus}"
-                             FontSize="12"
-                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                             FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <Button Content="Cancel"
                           Background="{DynamicResource BgElevatedBrush}"
                           Foreground="{DynamicResource TextPrimaryBrush}"
@@ -125,14 +123,13 @@
                           Command="{Binding CancelDeviceFlowCommand}"/>
                 </StackPanel>
 
-                <!-- PAT fallback (Advanced) -->
-                <Expander Header="Advanced: Personal Access Token"
-                          Foreground="{DynamicResource TextTertiaryBrush}"
-                          FontSize="12">
+                <!-- PAT identity fallback -->
+                <Expander Header="Advanced: use a Personal Access Token for identity"
+                          Foreground="{DynamicResource TextTertiaryBrush}" FontSize="12">
                   <StackPanel Spacing="8" Margin="0,8,0,0">
-                    <TextBlock Text="Use a GitHub PAT if Device Flow is unavailable."
-                               FontSize="12"
-                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="Paste a classic PAT with read:user scope if Device Flow is unavailable."
+                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" MaxWidth="400"/>
                     <TextBox Text="{Binding PatToken}" PasswordChar="•"
                              Watermark="ghp_xxxxxxxxxxxx"
                              Background="{DynamicResource BgSurfaceBrush}"
@@ -151,26 +148,67 @@
 
               <!-- Connected -->
               <StackPanel Spacing="8" IsVisible="{Binding IsGitHubConnected}">
-                <TextBlock Text="{Binding GithubLogin, StringFormat='● github.com/{0}'}"
-                           FontSize="13"
-                           Foreground="{DynamicResource TextSecondaryBrush}"/>
-                <TextBox Text="{Binding GitRemoteUrl}"
-                         Watermark="https://github.com/you/spotdesk-vault"
-                         Width="400"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Classes="primary-button" Content="Sync Now"
-                          Command="{Binding SyncNowCommand}"/>
-                  <Button Content="Disconnect"
-                          Background="{DynamicResource BgElevatedBrush}"
-                          Foreground="{DynamicResource TextPrimaryBrush}"
-                          CornerRadius="6" Padding="16,8"
+                  <TextBlock Text="●" FontSize="13" Foreground="#22C55E" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding GithubLogin, StringFormat='github.com/{0}'}"
+                             FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                             VerticalAlignment="Center"/>
+                  <Button Content="Sign out"
+                          Classes="ghost-button" FontSize="12"
                           Command="{Binding DisconnectGitHubCommand}"/>
                 </StackPanel>
-                <TextBlock Text="{Binding LastSyncedAt, StringFormat='Last synced: {0:g}'}"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextTertiaryBrush}"
-                           IsVisible="{Binding LastSyncedAt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
               </StackPanel>
+            </StackPanel>
+
+            <!-- ── Vault Repository ── -->
+            <StackPanel Spacing="8">
+              <TextBlock Text="Vault Repository"
+                         FontSize="14" FontWeight="Medium"
+                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+              <TextBlock FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                         TextWrapping="Wrap" MaxWidth="480"
+                         Text="SpotDesk syncs your encrypted vault to a single Git repository. Enter the URL and a fine-grained token scoped to ONLY that repository."/>
+
+              <StackPanel Spacing="6">
+                <TextBlock Text="Repository URL" FontSize="12"
+                           Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <TextBox Text="{Binding GitRemoteUrl}"
+                         Watermark="https://github.com/you/my-vault"
+                         Background="{DynamicResource BgSurfaceBrush}"
+                         BorderBrush="{DynamicResource BorderDefaultBrush}"
+                         CornerRadius="6" Width="400"/>
+              </StackPanel>
+
+              <StackPanel Spacing="6">
+                <TextBlock Text="Repository access token (fine-grained PAT)" FontSize="12"
+                           Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
+                           TextWrapping="Wrap" MaxWidth="480">
+                  <Run Text="Create at "/>
+                  <Run Text="github.com/settings/tokens?type=beta"
+                       Foreground="{DynamicResource AccentTextBrush}"/>
+                  <Run Text=" — select this repository only, grant Contents: Read and write."/>
+                </TextBlock>
+                <TextBox Text="{Binding VaultRepoPat}" PasswordChar="•"
+                         Watermark="github_pat_xxxxxxxxxxxx"
+                         Background="{DynamicResource BgSurfaceBrush}"
+                         BorderBrush="{DynamicResource BorderDefaultBrush}"
+                         CornerRadius="6" Width="400"/>
+              </StackPanel>
+
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary-button" Content="Save"
+                        Command="{Binding SaveVaultRepoCommand}"/>
+                <Button Classes="primary-button" Content="Sync Now"
+                        Command="{Binding SyncNowCommand}"
+                        IsVisible="{Binding IsGitHubConnected}"/>
+                <TextBlock Text="{Binding VaultRepoStatus}"
+                           FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+              <TextBlock Text="{Binding LastSyncedAt, StringFormat='Last synced: {0:g}'}"
+                         FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                         IsVisible="{Binding LastSyncedAt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
             </StackPanel>
 
             <!-- ── Bitbucket Sync ── -->

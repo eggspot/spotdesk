@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="using:SpotDesk.Core.Models"
+             xmlns:conv="using:SpotDesk.UI.Converters"
              x:Class="SpotDesk.UI.Controls.ConnectionListItem"
              x:DataType="models:ConnectionEntry">
 
-  <Grid ColumnDefinitions="24,*,Auto,Auto" Height="40"
+  <Grid ColumnDefinitions="24,*,Auto" Height="46"
         Background="Transparent" Cursor="Hand">
     <Grid.Styles>
       <Style Selector="Grid:pointerover">
@@ -20,31 +21,21 @@
 
     <!-- Name + host -->
     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0">
-      <TextBlock Text="{Binding Name}" FontSize="14"
+      <TextBlock Text="{Binding Name}" FontSize="15"
                  Foreground="{DynamicResource TextPrimaryBrush}"
                  TextTrimming="CharacterEllipsis"/>
-      <TextBlock Text="{Binding Host}" FontSize="11"
+      <TextBlock Text="{Binding Host}" FontSize="12"
                  Foreground="{DynamicResource TextTertiaryBrush}"
                  FontFamily="{DynamicResource FontMono}"/>
     </StackPanel>
 
     <!-- Protocol badge -->
-    <Border Grid.Column="2" Classes="protocol-badge" Margin="4,0">
-      <TextBlock Text="{Binding Protocol}" FontSize="11"
-                 Foreground="{DynamicResource TextSecondaryBrush}"
-                 FontFamily="{DynamicResource FontMono}"/>
+    <Border Grid.Column="2"
+            Background="{Binding Protocol, Converter={x:Static conv:ProtocolColorConverter.Instance}}"
+            CornerRadius="3" Padding="4,1" Margin="4,0,8,0">
+      <TextBlock Text="{Binding Protocol, Converter={x:Static conv:ProtocolLabelConverter.Instance}}"
+                 FontSize="9" Foreground="White" FontWeight="Bold" LetterSpacing="0.5"/>
     </Border>
-
-    <!-- Connect button (visible on hover) -->
-    <Button Grid.Column="3" Content="Connect" FontSize="12"
-            Classes="primary-button" Margin="4,0" Padding="8,4"
-            Opacity="0">
-      <Button.Styles>
-        <Style Selector="Grid:pointerover Button">
-          <Setter Property="Opacity" Value="1"/>
-        </Style>
-      </Button.Styles>
-    </Button>
   </Grid>
 
 </UserControl>

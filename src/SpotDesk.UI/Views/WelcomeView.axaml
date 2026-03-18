@@ -21,10 +21,11 @@
       <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
         <Button Classes="primary-button" Content="+ New Connection"
                 Command="{Binding NewConnectionCommand}"/>
-        <Button Content="Import from RDM"
+        <Button Content="Import Connections…"
                 Background="{DynamicResource BgElevatedBrush}"
                 Foreground="{DynamicResource TextPrimaryBrush}"
-                CornerRadius="6" Padding="16,8"/>
+                CornerRadius="6" Padding="16,8"
+                Command="{Binding OpenImportCommand}"/>
       </StackPanel>
 
       <!-- GitHub sign-in prompt -->

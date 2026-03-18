@@ -21,7 +21,6 @@ public class WindowsRdpSession : IRdpSession
 {
     private readonly ConnectionEntry _connection;
     private readonly CredentialEntry _credential;
-    private WriteableBitmap? _framebuffer;
 
     public Guid Id { get; } = Guid.NewGuid();
     public SessionStatus Status { get; private set; } = SessionStatus.Idle;
@@ -60,7 +59,7 @@ public class WindowsRdpSession : IRdpSession
         return Task.CompletedTask;
     }
 
-    public WriteableBitmap? GetFrameBuffer() => _framebuffer;
+    public WriteableBitmap? GetFrameBuffer() => null; // populated by AxMSTscLib COM once implemented
 
     public void SendKeyDown(int scanCode, bool isExtended = false) { }
     public void SendKeyUp(int scanCode, bool isExtended = false) { }
@@ -77,7 +76,6 @@ public class WindowsRdpSession : IRdpSession
 
     public void Dispose()
     {
-        _framebuffer?.Dispose();
         GC.SuppressFinalize(this);
     }
 }

@@ -1,0 +1,127 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SpotDesk.UI.ViewModels"
+             xmlns:models="using:SpotDesk.Core.Models"
+             xmlns:controls="using:SpotDesk.UI.Controls"
+             xmlns:conv="using:SpotDesk.UI.Converters"
+             xmlns:views="using:SpotDesk.UI.Views"
+             x:Class="SpotDesk.UI.Controls.ConnectionGroupItem"
+             x:DataType="vm:ConnectionGroupViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Button.group-row:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}"/>
+    </Style>
+    <Style Selector="TextBox.rename-box">
+      <Setter Property="Background" Value="{DynamicResource BgElevatedBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+      <Setter Property="CornerRadius" Value="3"/>
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel>
+
+    <!-- Group header row -->
+    <Button Classes="group-row"
+            Background="Transparent" BorderThickness="0"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch"
+            Padding="{Binding Depth, Converter={x:Static conv:DepthIndentConverter.Instance}, ConverterParameter=14}"
+            Command="{Binding ToggleExpandCommand}">
+      <Button.ContextMenu>
+        <ContextMenu>
+          <MenuItem Header="New Connection in Group"
+                    Command="{Binding $parent[views:SidebarView].DataContext.NewConnectionInGroupCommand}"
+                    CommandParameter="{Binding}"/>
+          <MenuItem Header="Rename Group"
+                    Command="{Binding BeginRenameCommand}"/>
+          <Separator/>
+          <MenuItem Header="Delete Group"
+                    Command="{Binding $parent[views:SidebarView].DataContext.DeleteGroupCommand}"
+                    CommandParameter="{Binding}"/>
+        </ContextMenu>
+      </Button.ContextMenu>
+      <Grid ColumnDefinitions="16,*,Auto" Height="28">
+        <!-- Expand arrow -->
+        <TextBlock Grid.Column="0"
+                   Text="{Binding IsExpanded, Converter={StaticResource ExpandArrowConverter}}"
+                   FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"
+                   VerticalAlignment="Center"/>
+        <!-- Name or rename TextBox -->
+        <TextBlock Grid.Column="1"
+                   Text="{Binding Name}"
+                   FontSize="12" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextTertiaryBrush}"
+                   LetterSpacing="0.5"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding !IsRenaming}"/>
+        <TextBox Grid.Column="1"
+                 Classes="rename-box"
+                 Text="{Binding RenameBuffer}"
+                 IsVisible="{Binding IsRenaming}"
+                 KeyDown="OnRenameKeyDown"
+                 LostFocus="OnRenameLostFocus"/>
+        <!-- Count -->
+        <TextBlock Grid.Column="2"
+                   Text="{Binding Entries.Count, StringFormat='({0})'}"
+                   FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding !IsRenaming}"
+                   Margin="4,0,0,0"/>
+      </Grid>
+    </Button>
+
+    <!-- Entries list -->
+    <ItemsControl ItemsSource="{Binding Entries}"
+                  IsVisible="{Binding IsExpanded}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="models:ConnectionEntry">
+          <Button Background="Transparent" BorderThickness="0"
+                  Padding="0"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch"
+                  Command="{Binding $parent[views:SidebarView].DataContext.ConnectCommand}"
+                  CommandParameter="{Binding}">
+            <Button.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Connect"
+                          Command="{Binding $parent[views:SidebarView].DataContext.ConnectCommand}"
+                          CommandParameter="{Binding}"/>
+                <MenuItem Header="Edit Connection"
+                          Command="{Binding $parent[views:SidebarView].DataContext.EditCommand}"
+                          CommandParameter="{Binding}"/>
+                <MenuItem Header="Duplicate"
+                          Command="{Binding $parent[views:SidebarView].DataContext.DuplicateCommand}"
+                          CommandParameter="{Binding}"/>
+                <Separator/>
+                <MenuItem Header="Delete"
+                          Command="{Binding $parent[views:SidebarView].DataContext.DeleteCommand}"
+                          CommandParameter="{Binding}"/>
+              </ContextMenu>
+            </Button.ContextMenu>
+            <controls:ConnectionListItem
+                Margin="{Binding $parent[controls:ConnectionGroupItem].DataContext.Depth,
+                                 Converter={x:Static conv:DepthIndentConverter.Instance},
+                                 ConverterParameter=22}"/>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- Child groups (recursive) -->
+    <ItemsControl ItemsSource="{Binding Children}"
+                  IsVisible="{Binding IsExpanded}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ConnectionGroupViewModel">
+          <controls:ConnectionGroupItem/>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+  </StackPanel>
+</UserControl>

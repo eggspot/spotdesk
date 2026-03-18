@@ -49,7 +49,7 @@
                   Height="140"
                   DragDrop.AllowDrop="True">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
-              <TextBlock Text="Drag &amp; drop .rdp / .rdf / .json here"
+              <TextBlock Text="Drag &amp; drop .xml / .json / .rdp / .mxtsessions here"
                          FontSize="14"
                          Foreground="{DynamicResource TextSecondaryBrush}"
                          HorizontalAlignment="Center"/>
@@ -96,12 +96,30 @@
                      Watermark="Master password"/>
           </StackPanel>
 
-          <!-- Preview table -->
+          <!-- Preview count -->
           <TextBlock Text="{Binding PreviewCount, StringFormat='{}{0} connections found'}"
                      FontSize="13"
-                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     IsVisible="{Binding !HasPreviewWarning}"/>
+
+          <!-- No connections warning -->
+          <Border Background="{DynamicResource BgSurfaceBrush}"
+                  BorderBrush="{DynamicResource StatusErrorBrush}"
+                  BorderThickness="1" CornerRadius="6" Padding="14,10"
+                  IsVisible="{Binding HasPreviewWarning}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="⚠" FontSize="16"
+                         Foreground="{DynamicResource StatusErrorBrush}"
+                         VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding PreviewWarning}"
+                         FontSize="13" TextWrapping="Wrap"
+                         Foreground="{DynamicResource TextPrimaryBrush}"
+                         VerticalAlignment="Center"/>
+            </StackPanel>
+          </Border>
 
           <dg:DataGrid ItemsSource="{Binding PreviewItems}"
+                       IsVisible="{Binding !HasPreviewWarning}"
                        Height="240"
                        IsReadOnly="False"
                        Background="{DynamicResource BgSurfaceBrush}"
@@ -211,9 +229,15 @@
                        HorizontalAlignment="Center"/>
           </StackPanel>
         </StackPanel>
-        <Button Classes="primary-button" Content="Open Connection Tree"
-                Command="{Binding OpenConnectionTreeCommand}"
-                HorizontalAlignment="Center"/>
+        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+          <Button Content="Import Another"
+                  Background="{DynamicResource BgElevatedBrush}"
+                  Foreground="{DynamicResource TextPrimaryBrush}"
+                  CornerRadius="6" Padding="16,8"
+                  Command="{Binding ImportAnotherCommand}"/>
+          <Button Classes="primary-button" Content="Done"
+                  Command="{Binding NextCommand}"/>
+        </StackPanel>
       </StackPanel>
     </Panel>
 

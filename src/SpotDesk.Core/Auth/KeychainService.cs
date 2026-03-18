@@ -2,14 +2,20 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace SpotDesk.Core.Auth;
 
 public static class KeychainKeys
 {
-    public const string GitHub = "spotdesk:oauth:github";
+    public const string GitHub    = "spotdesk:oauth:github";
     public const string Bitbucket = "spotdesk:oauth:bitbucket";
-    public const string Master = "spotdesk:master";
+    public const string Master    = "spotdesk:master";
+    /// <summary>
+    /// Fine-grained Personal Access Token scoped to the single vault repository.
+    /// Stored separately so the GitHub sign-in token only needs read:user scope.
+    /// </summary>
+    public const string VaultRepoPat = "spotdesk:vault:repo_pat";
 }
 
 public interface IKeychainService
@@ -188,13 +194,13 @@ public class LinuxKeychainService : IKeychainService
         var encrypted = File.ReadAllBytes(_fallbackPath);
         var key = GetFallbackKey();
         var json = Decrypt(encrypted, key);
-        return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
+        return System.Text.Json.JsonSerializer.Deserialize(json, KeychainJsonContext.Default.DictionaryStringString) ?? new();
     }
 
     private void SaveFallbackStore(Dictionary<string, string> store)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_fallbackPath)!);
-        var json = System.Text.Json.JsonSerializer.Serialize(store);
+        var json = System.Text.Json.JsonSerializer.Serialize(store, KeychainJsonContext.Default.DictionaryStringString);
         var key = GetFallbackKey();
         var encrypted = Encrypt(json, key);
         File.WriteAllBytes(_fallbackPath, encrypted);
@@ -228,3 +234,6 @@ public class LinuxKeychainService : IKeychainService
         return Encoding.UTF8.GetString(plaintext);
     }
 }
+
+[JsonSerializable(typeof(Dictionary<string, string>))]
+internal partial class KeychainJsonContext : JsonSerializerContext;

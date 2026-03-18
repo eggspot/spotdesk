@@ -35,13 +35,23 @@ public class GitSyncService : IGitSyncService
 
     public GitSyncService(IKeychainService keychain) => _keychain = keychain;
 
+    /// <summary>
+    /// Returns the best available token for git operations:
+    /// vault-repo fine-grained PAT first (scoped to one repo),
+    /// then falls back to the GitHub identity token.
+    /// </summary>
+    private string ResolveGitToken() =>
+        _keychain.Retrieve(KeychainKeys.VaultRepoPat)
+        ?? _keychain.Retrieve(KeychainKeys.GitHub)
+        ?? string.Empty;
+
     public async Task InitOrCloneAsync(string repoUrl, string localPath, CancellationToken ct = default)
     {
         await Task.Run(() =>
         {
             if (Repository.IsValid(localPath)) return;
 
-            var token = _keychain.Retrieve(KeychainKeys.GitHub) ?? string.Empty;
+            var token = ResolveGitToken();
             var options = new CloneOptions
             {
                 FetchOptions = { CredentialsProvider = (_, _, _) => BuildCredentials(token) }
@@ -58,7 +68,7 @@ public class GitSyncService : IGitSyncService
             await Task.Run(() =>
             {
                 using var repo = new Repository(localPath);
-                var token = _keychain.Retrieve(KeychainKeys.GitHub) ?? string.Empty;
+                var token = ResolveGitToken();
 
                 // Pull — fast-forward only
                 var pullOptions = new PullOptions

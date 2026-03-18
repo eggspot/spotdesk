@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SpotDesk.Core.Models;
 using SpotDesk.Core.Sync;
+using SpotDesk.Protocols;
 
 namespace SpotDesk.UI.ViewModels;
 
@@ -11,9 +12,25 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IGitSyncService? _syncService;
     private readonly LocalPrefsService _prefs;
     private readonly ThemeService _themeService;
+    private readonly ISessionManager? _sessionManager;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSidebarOverlayOpen))]
+    [NotifyPropertyChangedFor(nameof(EffectiveSidebarWidth))]
     private bool _isSidebarVisible = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSidebarOverlayOpen))]
+    [NotifyPropertyChangedFor(nameof(EffectiveSidebarWidth))]
+    [NotifyPropertyChangedFor(nameof(SidebarPinIcon))]
+    private bool _isSidebarPinned = true;
+
+    [ObservableProperty]
+    private double _sidebarWidth = 260;
+
+    public bool IsSidebarOverlayOpen => !IsSidebarPinned && IsSidebarVisible;
+    public double EffectiveSidebarWidth => IsSidebarPinned && IsSidebarVisible ? SidebarWidth : 0;
+    public string SidebarPinIcon => IsSidebarPinned ? "📌" : "◈";
 
     [ObservableProperty]
     private SessionTabViewModel? _activeTab;
@@ -43,17 +60,26 @@ public partial class MainWindowViewModel : ObservableObject
         SearchViewModel? search = null,
         IGitSyncService? syncService = null,
         LocalPrefsService? prefs = null,
-        ThemeService? themeService = null)
+        ThemeService? themeService = null,
+        ISessionManager? sessionManager = null)
     {
-        ConnectionTree = connectionTree;
-        Search         = search ?? new SearchViewModel([]);
-        _syncService   = syncService;
-        _prefs         = prefs ?? new LocalPrefsService();
-        _themeService  = themeService ?? new ThemeService();
+        ConnectionTree   = connectionTree;
+        Search           = search ?? new SearchViewModel([]);
+        _syncService     = syncService;
+        _prefs           = prefs ?? new LocalPrefsService();
+        _themeService    = themeService ?? new ThemeService();
+        _sessionManager  = sessionManager;
 
         // Subscribe to search activation
         Search.ConnectionActivated += entry => OpenTab(entry);
         Search.CloseRequested      += () => IsSearchVisible = false;
+
+        // Sidebar row click or Connect button
+        ConnectionTree.ConnectionActivated += OpenTab;
+        ConnectionTree.EditRequested           += entry => EditConnectionRequested?.Invoke(entry);
+        ConnectionTree.NewConnectionRequested  += () => NewConnectionRequested?.Invoke();
+        ConnectionTree.NewConnectionInGroupRequested += groupVm =>
+            NewConnectionInGroupRequested?.Invoke(groupVm.Group.Name);
 
         // Quick Connect bar opens an ad-hoc tab directly
         ConnectionTree.QuickConnectRequested += OpenTab;
@@ -61,16 +87,39 @@ public partial class MainWindowViewModel : ObservableObject
         // Restore saved preferences
         var saved = _prefs.Load();
         _themeService.SetTheme(saved.Theme);
-        _isSidebarVisible = saved.SidebarVisible;
+        _isSidebarVisible  = saved.SidebarVisible;
+        _isSidebarPinned   = saved.SidebarPinned;
+        _sidebarWidth      = saved.SidebarWidth;
     }
 
     // ── Navigation ────────────────────────────────────────────────────────
 
     [RelayCommand]
-    private void ToggleSidebar()
+    private void ToggleSidebar() => IsSidebarVisible = !IsSidebarVisible;
+
+    [RelayCommand]
+    private void ToggleSidebarPin() => IsSidebarPinned = !IsSidebarPinned;
+
+    partial void OnIsSidebarVisibleChanged(bool value)
     {
-        IsSidebarVisible = !IsSidebarVisible;
-        _prefs.Save(p => p with { SidebarVisible = IsSidebarVisible });
+        _prefs.Save(p => p with { SidebarVisible = value });
+        OnPropertyChanged(nameof(IsSidebarOverlayOpen));
+        OnPropertyChanged(nameof(EffectiveSidebarWidth));
+    }
+
+    partial void OnIsSidebarPinnedChanged(bool value)
+    {
+        _prefs.Save(p => p with { SidebarPinned = value });
+        OnPropertyChanged(nameof(IsSidebarOverlayOpen));
+        OnPropertyChanged(nameof(EffectiveSidebarWidth));
+        OnPropertyChanged(nameof(SidebarPinIcon));
+    }
+
+    public void SaveSidebarWidth(double width)
+    {
+        SidebarWidth = Math.Clamp(width, 160, 520);
+        OnPropertyChanged(nameof(EffectiveSidebarWidth));
+        _prefs.Save(p => p with { SidebarWidth = SidebarWidth });
     }
 
     [RelayCommand]
@@ -139,7 +188,8 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var tab = new SessionTabViewModel(connection);
+        var tab = new SessionTabViewModel(connection, _sessionManager);
+        tab.CloseRequested += () => CloseTab(tab);
         Tabs.Add(tab);
         ActiveTab        = tab;
         IsWelcomeVisible = false;
@@ -191,10 +241,18 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SignInWithGitHub() => GitHubSignInRequested?.Invoke();
 
+    // ── Import ────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void OpenImport() => ImportRequested?.Invoke();
+
     // ── Events raised to the View layer ──────────────────────────────────
 
     public event Action? NewConnectionRequested;
     public event Action? SettingsRequested;
     public event Action? SearchOpenRequested;
     public event Action? GitHubSignInRequested;
+    public event Action? ImportRequested;
+    public event Action<ConnectionEntry>? EditConnectionRequested;
+    public event Action<string>? NewConnectionInGroupRequested;
 }

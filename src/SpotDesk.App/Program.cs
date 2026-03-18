@@ -67,13 +67,17 @@ class Program
             sp.GetRequiredService<SearchViewModel>(),
             sp.GetRequiredService<IGitSyncService>(),
             sp.GetRequiredService<LocalPrefsService>(),
-            sp.GetRequiredService<ThemeService>()));
+            sp.GetRequiredService<ThemeService>(),
+            sp.GetRequiredService<ISessionManager>()));
         services.AddTransient<SettingsViewModel>(sp => new SettingsViewModel(
             sp.GetRequiredService<IOAuthService>(),
             sp.GetRequiredService<IVaultService>(),
             sp.GetRequiredService<ISessionLockService>(),
             sp.GetRequiredService<ThemeService>(),
-            sp.GetRequiredService<LocalPrefsService>()));
+            sp.GetRequiredService<LocalPrefsService>(),
+            sp.GetRequiredService<IGitSyncService>(),
+            sp.GetRequiredService<IDeviceIdService>(),
+            sp.GetRequiredService<IKeychainService>()));
 
         return services.BuildServiceProvider();
     }

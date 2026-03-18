@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SpotDesk.Core.Auth;
 using SpotDesk.Core.Crypto;
+using SpotDesk.Core.Models;
 using SpotDesk.Core.Sync;
 using SpotDesk.Core.Vault;
 
@@ -17,13 +18,21 @@ public partial class SettingsViewModel : ObservableObject
     private readonly ThemeService _themeService;
     private readonly LocalPrefsService _prefs;
     private readonly IGitSyncService? _syncService;
+    private readonly IKeychainService _keychain;
     private readonly string _deviceId;
 
     [ObservableProperty] private AppTheme _theme = AppTheme.Dark;
     [ObservableProperty] private bool     _lockOnScreenLock;
-    [ObservableProperty] private string   _autoSyncInterval = "5 min";
+    [ObservableProperty] private string   _autoSyncInterval = "15 minutes";
     [ObservableProperty] private string?  _gitRemoteUrl;
     [ObservableProperty] private DateTimeOffset? _lastSyncedAt;
+
+    // Vault repo fine-grained PAT — stored in OS keychain, never in prefs.json
+    [ObservableProperty] private string _vaultRepoPat  = string.Empty;
+    [ObservableProperty] private string _vaultRepoStatus = string.Empty;
+
+    public static IReadOnlyList<string> SyncIntervalOptions { get; } =
+        ["5 minutes", "15 minutes", "30 minutes", "1 hour", "4 hours", "Manual only"];
     [ObservableProperty] private bool     _isGitHubConnected;
     [ObservableProperty] private string?  _githubLogin;
     [ObservableProperty] private bool     _isVaultUnlocked;
@@ -65,7 +74,8 @@ public partial class SettingsViewModel : ObservableObject
         ThemeService? themeService = null,
         LocalPrefsService? prefs = null,
         IGitSyncService? syncService = null,
-        IDeviceIdService? deviceIdService = null)
+        IDeviceIdService? deviceIdService = null,
+        IKeychainService? keychain = null)
     {
         _oauth        = oauth;
         _vault        = vault;
@@ -73,12 +83,20 @@ public partial class SettingsViewModel : ObservableObject
         _themeService = themeService ?? new ThemeService();
         _prefs        = prefs        ?? new LocalPrefsService();
         _syncService  = syncService;
+        _keychain     = keychain ?? KeychainServiceFactory.Create();
         _deviceId     = deviceIdService?.GetDeviceId() ?? string.Empty;
 
         IsVaultUnlocked = sessionLock.IsUnlocked;
         var saved = _prefs.Load();
-        _theme       = saved.Theme;
-        _isLocalMode = saved.VaultMode == "local";
+        _theme          = saved.Theme;
+        _isLocalMode    = saved.VaultMode == "local";
+        _gitRemoteUrl   = saved.VaultRepoPath;
+        _autoSyncInterval = saved.AutoSyncInterval ?? "15 minutes";
+
+        // Load vault repo PAT from keychain (never from prefs.json)
+        var storedPat = _keychain.Retrieve(KeychainKeys.VaultRepoPat);
+        if (!string.IsNullOrEmpty(storedPat))
+            _vaultRepoPat = new string('•', 20); // show masked placeholder
     }
 
     // Notify CanMigrate when its dependencies change
@@ -91,6 +109,9 @@ public partial class SettingsViewModel : ObservableObject
         _themeService.SetTheme(value);
         _prefs.Save(p => p with { Theme = value });
     }
+
+    partial void OnAutoSyncIntervalChanged(string value) =>
+        _prefs.Save(p => p with { AutoSyncInterval = value });
 
     // Primary auth: GitHub Device Authorization Grant (RFC 8628).
     // No redirect URI, no client_secret — single bundled client_id works for all users.
@@ -269,6 +290,41 @@ public partial class SettingsViewModel : ObservableObject
         {
             IsMigrating = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task SaveVaultRepoAsync()
+    {
+        VaultRepoStatus = "Saving…";
+        try
+        {
+            // Save repo URL to prefs
+            _prefs.Save(p => p with { VaultRepoPath = GitRemoteUrl });
+
+            // Save PAT to keychain only if user entered a real value (not the masked placeholder)
+            if (!string.IsNullOrWhiteSpace(VaultRepoPat) && !VaultRepoPat.All(c => c == '•'))
+            {
+                _keychain.Store(KeychainKeys.VaultRepoPat, VaultRepoPat.Trim());
+                VaultRepoPat = new string('•', 20); // re-mask after save
+            }
+
+            // Quick connectivity test — try to clone/open the repo
+            if (_syncService is not null && !string.IsNullOrWhiteSpace(GitRemoteUrl))
+            {
+                var localDir = _prefs.Load().VaultRepoPath ?? string.Empty;
+                // We don't clone here — just confirm settings are saved
+                VaultRepoStatus = "Saved ✓";
+            }
+            else
+            {
+                VaultRepoStatus = "Saved ✓";
+            }
+        }
+        catch (Exception ex)
+        {
+            VaultRepoStatus = $"Error: {ex.Message}";
+        }
+        await Task.CompletedTask;
     }
 
     [RelayCommand]

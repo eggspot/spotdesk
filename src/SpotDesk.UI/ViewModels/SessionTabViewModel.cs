@@ -2,6 +2,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SpotDesk.Core.Models;
+using SpotDesk.Protocols;
 
 namespace SpotDesk.UI.ViewModels;
 
@@ -20,6 +21,11 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private int _reconnectCountdown;
     [ObservableProperty] private bool _isReconnecting;
+    [ObservableProperty] private bool _hasFrame;
+
+    private readonly ConnectionEntry _connection;
+    private readonly ISessionManager? _sessionManager;
+    private IRdpSession? _rdpSession;
 
     private System.Threading.Timer? _reconnectTimer;
     private CancellationTokenSource? _reconnectCts;
@@ -43,6 +49,19 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
         _            => string.Empty
     };
 
+    public bool IsConnecting => Status is SessionStatus.Connecting or SessionStatus.Reconnecting;
+    public bool IsError      => Status == SessionStatus.Error;
+    public bool IsIdle       => Status == SessionStatus.Idle;
+
+    partial void OnStatusChanged(SessionStatus value)
+    {
+        OnPropertyChanged(nameof(StatusColor));
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(IsConnecting));
+        OnPropertyChanged(nameof(IsError));
+        OnPropertyChanged(nameof(IsIdle));
+    }
+
     // ── SSH status bar properties ─────────────────────────────────────────
     public string StatusText  => StatusMessage ?? Status.ToString();
     public string LatencyText => LatencyMs > 0 ? $"{LatencyMs}ms" : string.Empty;
@@ -56,6 +75,7 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
     public void NotifyFrameBitmapChanged(WriteableBitmap? bitmap)
     {
         CurrentFrame = bitmap;
+        HasFrame     = bitmap != null;
         FrameBitmapChanged?.Invoke(bitmap);
     }
 
@@ -67,12 +87,14 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
 
     // ── Construction ─────────────────────────────────────────────────────
 
-    public SessionTabViewModel(ConnectionEntry connection)
+    public SessionTabViewModel(ConnectionEntry connection, ISessionManager? sessionManager = null)
     {
-        ConnectionId  = connection.Id;
-        _displayName  = connection.Name;
-        _protocol     = connection.Protocol;
-        _statusMessage = string.Empty;
+        ConnectionId    = connection.Id;
+        _displayName    = connection.Name;
+        _protocol       = connection.Protocol;
+        _statusMessage  = string.Empty;
+        _connection     = connection;
+        _sessionManager = sessionManager;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────
@@ -83,24 +105,69 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
         _reconnectCts?.Cancel();
         _reconnectTimer?.Dispose();
         IsReconnecting = false;
+        HasFrame       = false;
 
         Status        = SessionStatus.Connecting;
         StatusMessage = "Connecting…";
 
-        // TODO: get session from ISessionManager and call ConnectAsync
-        // Simulated connect for now
-        await Task.Delay(100);
-        Status        = SessionStatus.Connected;
-        StatusMessage = "Connected";
+        if (_sessionManager is null)
+        {
+            // Running without a real session manager (unit tests, design-time)
+            await Task.Delay(200);
+            Status        = SessionStatus.Error;
+            StatusMessage = "No session manager available — running in UI preview mode";
+            return;
+        }
+
+        try
+        {
+            var credential = new CredentialEntry(); // TODO: resolve from vault by connection.CredentialId
+            _rdpSession = _sessionManager.GetOrCreateRdp(_connection, credential);
+
+            _rdpSession.StatusChanged  += OnSessionStatusChanged;
+            _rdpSession.LatencyUpdated += OnLatencyUpdated;
+            _rdpSession.FrameUpdated   += OnFrameUpdated;
+
+            await _rdpSession.ConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            Status        = SessionStatus.Error;
+            StatusMessage = $"Connection failed: {ex.Message}";
+        }
     }
+
+    private void OnSessionStatusChanged(SessionStatus status) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            Status        = status;
+            StatusMessage = status switch
+            {
+                SessionStatus.Connected      => "Connected",
+                SessionStatus.Connecting     => "Connecting…",
+                SessionStatus.Reconnecting   => "Reconnecting…",
+                SessionStatus.Disconnecting  => "Disconnecting…",
+                SessionStatus.Idle           => string.Empty,
+                _                            => StatusMessage
+            };
+        });
+
+    private void OnLatencyUpdated(int latency) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LatencyMs = latency);
+
+    private void OnFrameUpdated() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            NotifyFrameBitmapChanged(_rdpSession?.GetFrameBuffer()));
 
     [RelayCommand]
     private async Task DisconnectAsync()
     {
         Status        = SessionStatus.Disconnecting;
         StatusMessage = "Disconnecting…";
-        // TODO: call ISessionManager.Close(ConnectionId)
-        await Task.CompletedTask;
+        if (_rdpSession != null)
+            await _rdpSession.DisconnectAsync();
+        else
+            await Task.CompletedTask;
         Status        = SessionStatus.Idle;
         StatusMessage = string.Empty;
     }
@@ -119,19 +186,20 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
         StatusMessage      = string.Empty;
     }
 
+    /// <summary>Raised when the user clicks the tab close button. MainWindowViewModel handles removal.</summary>
+    public event Action? CloseRequested;
+
     [RelayCommand]
     private void Close()
     {
-        // Handled by MainWindowViewModel.CloseTab — no-op here
+        _reconnectCts?.Cancel();
+        _reconnectTimer?.Dispose();
+        IsReconnecting = false;
+        CloseRequested?.Invoke();
     }
 
     [RelayCommand]
-    private void FitWindow()
-    {
-        // Notify the RDP/VNC backend to resize the session to match the current
-        // surface bounds. The backend calls back on FrameBitmapChanged with a
-        // resized bitmap.
-    }
+    private void FitWindow() { }
 
     [RelayCommand]
     private void TakeScreenshot()
@@ -150,31 +218,16 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
         CurrentFrame.Save(path);
     }
 
-    /// <summary>
-    /// Raised when Ctrl+Alt+Del should be forwarded to the active session backend.
-    /// The session view subscribes and calls the backend's SendCtrlAltDel().
-    /// </summary>
     public event Action? CtrlAltDelRequested;
 
     [RelayCommand]
     private void SendCtrlAltDel() => CtrlAltDelRequested?.Invoke();
 
-    // ── Input routing for SSH ─────────────────────────────────────────────
-
-    /// <summary>
-    /// Raised when a key event should be forwarded to the SSH session's stdin pipe.
-    /// The session view subscribes and writes the translated byte sequence.
-    /// </summary>
     public event Action<Avalonia.Input.KeyEventArgs>? KeyInputReceived;
-
     public void HandleKeyInput(Avalonia.Input.KeyEventArgs e) => KeyInputReceived?.Invoke(e);
 
     // ── Auto-reconnect ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Call this when the underlying session disconnects unexpectedly.
-    /// Starts a 3-second countdown, then auto-reconnects.
-    /// </summary>
     public void OnUnexpectedDisconnect(string? reason = null)
     {
         Status        = SessionStatus.Error;
@@ -209,9 +262,13 @@ public partial class SessionTabViewModel : ObservableObject, IDisposable
     {
         _reconnectCts?.Cancel();
         _reconnectTimer?.Dispose();
-        // Session backend cleanup is handled by the session manager via DisconnectAsync,
-        // which the view calls before CloseTab. Nothing more to do here.
+        if (_rdpSession != null)
+        {
+            _rdpSession.StatusChanged  -= OnSessionStatusChanged;
+            _rdpSession.LatencyUpdated -= OnLatencyUpdated;
+            _rdpSession.FrameUpdated   -= OnFrameUpdated;
+            _sessionManager?.Close(ConnectionId);
+        }
         GC.SuppressFinalize(this);
     }
 }
-
