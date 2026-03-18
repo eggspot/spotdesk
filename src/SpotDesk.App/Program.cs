@@ -81,5 +81,11 @@ class Program
     private static AppBuilder BuildAvaloniaApp(IServiceProvider services) =>
         AppBuilder.Configure<SpotDesk.UI.App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions
+            {
+                // Use overlay popups to avoid Win32 NativeControlHost child window
+                // creation issues when the apphost lacks a supportedOS manifest.
+                OverlayPopups = true
+            })
             .LogToTrace();
 }

@@ -20,3 +20,4 @@ desktop.ini
 TestResults/
 coverage/
 *.coverage
+.claude/settings.local.json

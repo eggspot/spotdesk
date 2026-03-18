@@ -9,6 +9,7 @@
     <RootNamespace>SpotDesk.App</RootNamespace>
     <AssemblyName>SpotDesk</AssemblyName>
     <!-- ApplicationIcon: add Assets\spotdesk.ico before release -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Single-file delivery ─────────────────────────────────────────
@@ -37,5 +38,15 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-preview.*" />
   </ItemGroup>
+
+  <!-- Stamp app.manifest onto apphost exe (Windows only).
+       Install Windows SDK for mt.exe, or run: dotnet publish -r win-x64 -->
+  <Target Name="StampManifest" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="mt.exe -nologo -manifest &quot;$(ProjectDir)app.manifest&quot; -outputresource:&quot;$(OutputPath)$(AssemblyName).exe&quot;;#1"
+          IgnoreExitCode="true"
+          IgnoreStandardErrorWarningFormat="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low" />
+  </Target>
 
 </Project>

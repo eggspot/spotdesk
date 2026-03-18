@@ -1,6 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using SpotDesk.UI.ViewModels;
 
@@ -8,15 +6,12 @@ namespace SpotDesk.UI.Views;
 
 /// <summary>
 /// RDP session view.
-/// Windows: embeds a NativeControlHost that hosts the ActiveX MSTSC control.
-/// macOS/Linux: renders the bitmap stream from FreeRDP into an Image control.
+/// Renders the session framebuffer into an Image control defined in XAML.
 /// The session toolbar auto-hides after 2 seconds on pointer leave.
 /// </summary>
 public partial class RdpView : UserControl
 {
     private DispatcherTimer? _toolbarHideTimer;
-    private Border? _toolbar;
-    private Panel?  _surface;
 
     public RdpView()
     {
@@ -26,88 +21,43 @@ public partial class RdpView : UserControl
 
     private void OnLoaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        _toolbar = this.FindControl<Border>("SessionToolbar");
-        _surface = this.FindControl<Panel>("SessionSurface");
+        var toolbar = this.FindControl<Border>("SessionToolbar");
+        var image   = this.FindControl<Image>("SessionImage");
 
-        _toolbarHideTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(2)
-        };
+        _toolbarHideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _toolbarHideTimer.Tick += (_, _) =>
         {
             _toolbarHideTimer.Stop();
-            if (_toolbar is not null) _toolbar.IsVisible = false;
+            if (toolbar is not null) toolbar.IsVisible = false;
         };
 
-        if (_surface is not null)
+        // Show toolbar on pointer move over the session area
+        PointerMoved += (_, _) =>
         {
-            _surface.PointerMoved  += OnPointerMoved;
-            _surface.PointerExited += OnPointerExited;
-        }
+            if (toolbar is not null) toolbar.IsVisible = true;
+            _toolbarHideTimer?.Stop();
+            _toolbarHideTimer?.Start();
+        };
+        PointerExited += (_, _) =>
+        {
+            _toolbarHideTimer?.Stop();
+            _toolbarHideTimer?.Start();
+        };
 
-        // Wire up toolbar buttons
-        var btnFit       = this.FindControl<Button>("BtnFitWindow");
-        var btnFull      = this.FindControl<Button>("BtnFullScreen");
+        // Wire toolbar buttons
+        var btnFit        = this.FindControl<Button>("BtnFitWindow");
+        var btnFull       = this.FindControl<Button>("BtnFullScreen");
         var btnScreenshot = this.FindControl<Button>("BtnScreenshot");
-        var btnCad       = this.FindControl<Button>("BtnCtrlAltDel");
+        var btnCad        = this.FindControl<Button>("BtnCtrlAltDel");
 
-        if (btnFit       is not null) btnFit.Click       += (_, _) => FitWindow();
-        if (btnFull      is not null) btnFull.Click      += (_, _) => ToggleFullScreen();
-        if (btnScreenshot is not null) btnScreenshot.Click += (_, _) => TakeScreenshot();
-        if (btnCad       is not null) btnCad.Click       += (_, _) => SendCtrlAltDel();
+        if (btnFit        is not null) btnFit.Click        += (_, _) => (DataContext as SessionTabViewModel)?.FitWindowCommand.Execute(null);
+        if (btnFull       is not null) btnFull.Click       += (_, _) => ToggleFullScreen();
+        if (btnScreenshot is not null) btnScreenshot.Click += (_, _) => (DataContext as SessionTabViewModel)?.TakeScreenshotCommand.Execute(null);
+        if (btnCad        is not null) btnCad.Click        += (_, _) => (DataContext as SessionTabViewModel)?.SendCtrlAltDelCommand.Execute(null);
 
-        AttachSessionSurface();
-    }
-
-    private void AttachSessionSurface()
-    {
-        if (_surface is null) return;
-
-        if (OperatingSystem.IsWindows())
-        {
-            // On Windows embed the MSTSC ActiveX via NativeControlHost.
-            // The actual wiring into the RDP backend is handled by WindowsRdpBackend.
-            var host = new NativeControlHost
-            {
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
-                VerticalAlignment   = Avalonia.Layout.VerticalAlignment.Stretch
-            };
-            _surface.Children.Add(host);
-        }
-        else
-        {
-            // On macOS/Linux render the frame bitmap from FreeRDP.
-            var img = new Image
-            {
-                Stretch             = Avalonia.Media.Stretch.Fill,
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
-                VerticalAlignment   = Avalonia.Layout.VerticalAlignment.Stretch
-            };
-            _surface.Children.Add(img);
-
-            if (DataContext is SessionTabViewModel vm)
-                vm.FrameBitmapChanged += bitmap => Dispatcher.UIThread.Post(() => img.Source = bitmap);
-        }
-    }
-
-    private void OnPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (_toolbar is not null) _toolbar.IsVisible = true;
-        _toolbarHideTimer?.Stop();
-        _toolbarHideTimer?.Start();
-    }
-
-    private void OnPointerExited(object? sender, PointerEventArgs e)
-    {
-        _toolbarHideTimer?.Stop();
-        _toolbarHideTimer?.Start();
-    }
-
-    private void FitWindow()
-    {
-        // Notify the ViewModel to resize the session to match current bounds
-        if (DataContext is SessionTabViewModel vm)
-            vm.FitWindowCommand.Execute(null);
+        // Wire framebuffer updates from the session backend to the Image control
+        if (image is not null && DataContext is SessionTabViewModel vm)
+            vm.FrameBitmapChanged += bitmap => Dispatcher.UIThread.Post(() => image.Source = bitmap);
     }
 
     private void ToggleFullScreen()
@@ -117,17 +67,5 @@ public partial class RdpView : UserControl
         window.WindowState = window.WindowState == WindowState.FullScreen
             ? WindowState.Normal
             : WindowState.FullScreen;
-    }
-
-    private void TakeScreenshot()
-    {
-        if (DataContext is SessionTabViewModel vm)
-            vm.TakeScreenshotCommand.Execute(null);
-    }
-
-    private void SendCtrlAltDel()
-    {
-        if (DataContext is SessionTabViewModel vm)
-            vm.SendCtrlAltDelCommand.Execute(null);
     }
 }

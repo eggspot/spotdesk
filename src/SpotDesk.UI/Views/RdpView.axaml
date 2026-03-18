@@ -24,11 +24,13 @@
       </StackPanel>
     </Border>
 
-    <!-- RDP session surface (NativeControlHost on Windows, Image on other platforms) -->
-    <Panel Grid.Row="1" x:Name="SessionSurface"
-           Background="{DynamicResource BgBaseBrush}">
-      <!-- Populated in code-behind based on platform -->
-    </Panel>
+    <!-- RDP session surface — framebuffer rendered as Image -->
+    <Border Grid.Row="1" Background="{DynamicResource BgBaseBrush}">
+      <Image x:Name="SessionImage"
+             Stretch="Fill"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"/>
+    </Border>
 
     <!-- Reconnect overlay -->
     <Border Grid.Row="1" ZIndex="5"
