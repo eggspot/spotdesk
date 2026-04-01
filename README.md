@@ -1,23 +1,23 @@
-# SpotDesk
+# EggDesk
 
-**Cross-platform remote desktop manager** built with .NET 10 and AvaloniaUI.
+**Cross-platform remote desktop manager** built with .NET 10 and AvaloniaUI by [Eggspot](https://github.com/eggspot).
 
-Manage RDP, SSH, and VNC connections from a single app — with an encrypted local vault, optional GitHub/Bitbucket sync, and a clean dark UI that runs natively on Windows, macOS, and Linux.
+Manage RDP, SSH, and VNC connections from a single app -- with an encrypted local vault, optional GitHub/Bitbucket sync, and a clean dark UI that runs natively on Windows, macOS, and Linux.
 
 ---
 
 ## Features
 
-- **RDP, SSH, VNC** — native backends per platform (AxMSTscLib on Windows, FreeRDP on macOS/Linux, SSH.NET terminal)
-- **Encrypted vault** — AES-256-GCM with Argon2id key derivation. Two modes:
-  - **Local mode** — password-only, no account required, works offline forever
-  - **GitHub/Bitbucket sync** — vault synced as a private Git repo across your devices
-- **Tabbed sessions** — tab switch < 50 ms; sessions stay alive in background
-- **Global search** — fuzzy-match across all connections (Ctrl+K)
-- **Group & tag connections** — organize by environment, protocol, or team
-- **Import RDP files** — drag in `.rdp` files from Windows
+- **RDP, SSH, VNC** -- native backends per platform (AxMSTscLib on Windows, FreeRDP on macOS/Linux, SSH.NET terminal)
+- **Encrypted vault** -- AES-256-GCM with Argon2id key derivation. Two modes:
+  - **Local mode** -- password-only, no account required, works offline forever
+  - **GitHub/Bitbucket sync** -- vault synced as a private Git repo across your devices
+- **Tabbed sessions** -- tab switch < 50 ms; sessions stay alive in background
+- **Global search** -- fuzzy-match across all connections (Ctrl+K)
+- **Group & tag connections** -- organize by environment, protocol, or team
+- **Import connections** -- drag in `.rdp`, `.rdm`, `.ini` (MobaXterm), or mRemoteNG XML files
 - **Dark / Light / System theme**
-- **NativeAOT on Windows** — single binary, no .NET runtime required
+- **NativeAOT on Windows** -- single binary, no .NET runtime required
 
 ---
 
@@ -52,8 +52,8 @@ Grab the latest release for your platform from the [Releases](../../releases) pa
 ```bash
 # Prerequisites: .NET 10 SDK
 
-git clone https://github.com/your-org/spotdesk.git
-cd spotdesk/src
+git clone https://github.com/eggspot/EggDesk.git
+cd EggDesk
 
 # Restore packages
 dotnet restore SpotDesk.sln
@@ -64,7 +64,7 @@ dotnet run --project src/SpotDesk.App
 # Run tests
 dotnet test SpotDesk.sln
 
-# Publish — single-file executable (any platform)
+# Publish -- single-file executable (any platform)
 ./scripts/publish.sh              # auto-detect platform
 ./scripts/publish.sh win-x64      # or specify explicitly
 ./scripts/publish.sh osx-arm64
@@ -76,17 +76,17 @@ dotnet publish src/SpotDesk.App -r win-x64 -c Release
 
 ### Single-file delivery
 
-SpotDesk publishes as a **single executable** — no installer, no runtime, no external dependencies (except FreeRDP on Linux/macOS for RDP support).
+EggDesk publishes as a **single executable** -- no installer, no runtime, no external dependencies (except FreeRDP on Linux/macOS for RDP support).
 
 | Property | Value |
 |---|---|
 | `PublishSingleFile` | All managed code bundled into one binary |
-| `SelfContained` | .NET runtime embedded — no install needed |
+| `SelfContained` | .NET runtime embedded -- no install needed |
 | `PublishTrimmed` | Unused code removed (~30% smaller) |
 | `EnableCompressionInSingleFile` | Binary is compressed |
-| `IncludeNativeLibrariesForSelfExtract` | Native libs (LibGit2Sharp's libgit2) bundled inside, extracted to temp on first launch (~5ms) |
+| `IncludeNativeLibrariesForSelfExtract` | Native libs (LibGit2Sharp's libgit2) bundled inside, extracted to temp on first launch |
 
-The Git sync engine uses **LibGit2Sharp** (embedded native `libgit2`), so users don't need git installed. The native binary is bundled inside the single-file executable.
+The Git sync engine uses **LibGit2Sharp** (embedded native `libgit2`), so users don't need git installed.
 
 ### Linux runtime dependencies
 
@@ -128,20 +128,13 @@ tests/
   SpotDesk.Protocols.Tests/
 ```
 
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed module descriptions and dependency graphs.
+
 ---
 
 ## Testing
 
-SpotDesk has **200+ automated tests** organized by milestone, designed for a fast feedback loop when developing with AI assistance ("vibe coding").
-
-### Test pyramid
-
-```
-        /  Headless UI Smoke (M5)  \      ← views render, selectors work
-       / ViewModel Integration (M5) \     ← commands, state transitions, auth flows
-      /  Domain Unit Tests (M1-M3)   \    ← crypto, sync, import, auth
-     / Protocol Unit Tests (Protocols) \  ← terminal buffer, VT100
-```
+EggDesk has **~195 automated tests** organized by milestone.
 
 ### Test categories
 
@@ -149,9 +142,9 @@ SpotDesk has **200+ automated tests** organized by milestone, designed for a fas
 |---|---|---|
 | M1 | Vault, crypto, OAuth, keychain, key derivation | ~95 |
 | M2 | Git sync, conflict resolution | ~10 |
-| M3 | RDP/RDM file importers | ~13 |
+| M3 | File importers (RDP, RDM, mRemoteNG, MobaXterm) | ~13 |
 | M4 | ViewModels, headless UI dialogs | ~50 |
-| M5 | Integration: SettingsVM flows, SessionTab lifecycle, view selector, tab management | ~30 |
+| M5 | Integration: SettingsVM flows, SessionTab lifecycle, view selector | ~30 |
 | Protocols | Terminal buffer, VT100 parser | ~5 |
 
 ### Running tests
@@ -163,42 +156,28 @@ dotnet test SpotDesk.sln
 # Single milestone
 dotnet test SpotDesk.sln --filter "Category=M1"
 
-# Multiple milestones
-dotnet test SpotDesk.sln --filter "Category=M1|Category=M5"
-
 # Self-healing test loop (build once, retry up to 5x)
 ./scripts/test-loop.sh                    # all tests
 ./scripts/test-loop.sh --milestone M1     # single milestone
 .\scripts\test-loop.ps1 -Milestone M5     # PowerShell on Windows
 ```
 
-### Vibe coding workflow
-
-The test suite is designed so you can iterate with an AI assistant:
-
-1. **Describe the change** you want
-2. AI writes code + runs `dotnet test`
-3. If tests fail → AI reads output → fixes → re-runs
-4. Green = done. No manual clicking needed.
-
-The `scripts/test-loop.sh` (or `.ps1`) automates this: build once, run tests up to 5 times, stop on green.
-
 ### CI
 
-GitHub Actions runs all tests on **Linux, Windows, macOS** on every push and PR. Coverage reports are generated on Linux and uploaded as artifacts.
+GitHub Actions runs all tests on **Linux, Windows, macOS** on every push and PR.
 
 ---
 
 ## Contributing
 
-All contributions are welcome — bug fixes, features, documentation, translations.
+All contributions are welcome -- bug fixes, features, documentation, translations.
 
 1. Fork the repo and create a branch (`git checkout -b feat/my-feature`)
 2. Make your changes and add tests
-3. Run `dotnet test SpotDesk.sln` — all tests must pass
+3. Run `dotnet test SpotDesk.sln` -- all tests must pass
 4. Open a pull request
 
-There are no contributor license agreements. Code you contribute is licensed MIT.
+Code you contribute is licensed MIT.
 
 ---
 
@@ -217,10 +196,9 @@ If you find a security issue, please open a **private** GitHub Security Advisory
 
 ## Sponsoring
 
-SpotDesk is free and open source (MIT). If it saves you time, consider sponsoring development:
+EggDesk is free and open source (MIT). If it saves you time, consider sponsoring development:
 
 - Click the **Sponsor** button at the top of this page (GitHub Sponsors)
-- Or find us on Ko-fi / Buy Me a Coffee — links in the sidebar
 
 Your support funds ongoing development, new platform support, and security audits.
 
@@ -228,4 +206,4 @@ Your support funds ongoing development, new platform support, and security audit
 
 ## License
 
-[MIT](LICENSE) — do whatever you want, no limitations.
+[MIT](LICENSE)

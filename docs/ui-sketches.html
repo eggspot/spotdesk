@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EggDesk UI Sketches</title>
+<style>
+  :root {
+    --bg-base: #0F1117;
+    --bg-surface: #171B26;
+    --bg-elevated: #1E2333;
+    --bg-hover: #252A3D;
+    --accent: #3B82F6;
+    --text-primary: #E8EAF0;
+    --text-secondary: #9AA3B8;
+    --text-tertiary: #5A6478;
+    --border: #2E3449;
+    --green: #22C55E;
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --gray: #6B7280;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 32px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+  h1 span { color: var(--text-secondary); font-weight: 400; font-size: 16px; }
+  .subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+    font-size: 13px;
+  }
+  h2 {
+    font-size: 18px;
+    font-weight: 500;
+    margin-top: 48px;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  h2 .tag {
+    display: inline-block;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    font-weight: 400;
+    vertical-align: middle;
+  }
+  p.desc {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 16px;
+    max-width: 700px;
+  }
+  pre.wireframe {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+  .note {
+    background: var(--bg-elevated);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 32px;
+  }
+  .note strong { color: var(--text-primary); }
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    font-size: 12px;
+  }
+  .legend span { color: var(--text-secondary); }
+  .legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .dot-green { background: var(--green); }
+  .dot-amber { background: var(--amber); }
+  .dot-red { background: var(--red); }
+  .dot-gray { background: var(--gray); }
+  footer {
+    margin-top: 64px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>EggDesk <span>UI Sketches</span></h1>
+<p class="subtitle">ASCII wireframes for all views -- EggDesk by Eggspot | .NET 10 / AvaloniaUI 11</p>
+
+<div class="legend">
+  <span><span class="dot dot-green"></span> Connected</span>
+  <span><span class="dot dot-amber"></span> Connecting</span>
+  <span><span class="dot dot-red"></span> Error</span>
+  <span><span class="dot dot-gray"></span> Idle / Disconnected</span>
+</div>
+
+<!-- ==================== MainWindow ==================== -->
+<h2>MainWindow <span class="tag">Views/MainWindow.axaml</span></h2>
+<p class="desc">
+  Primary application shell. Custom chromeless title bar with drag region.
+  Three-zone layout: collapsible sidebar (240px), tab bar (40px height), and session pane.
+  Sidebar collapses to icon-only (48px) via Ctrl+\.
+</p>
+<pre class="wireframe">
++-----------------------------------------------------------------------+
+| TITLEBAR (32px, custom chrome)                                        |
+| [=] EggDesk           [Search Ctrl+K]       [Sync ^] [Settings] [-X] |
++----------+------------------------------------------------------------+
+|          | TAB BAR (40px)                                             |
+| SIDEBAR  | [+ New] [* prod-web-01 x] [* db-server x] [...]           |
+| (240px)  +------------------------------------------------------------+
+|          |                                                            |
+| Groups   |                  SESSION PANE                              |
+| + My     |                                                            |
+|   Servers|          (RDP / SSH / VNC renders here)                    |
+|   > Prod |          Full resolution, no letterbox                    |
+|   > Dev  |                                                            |
+|   > Stg  |          When no session open:                            |
+|          |             WelcomeView shown                              |
+| Recents  |                                                            |
+|  web-01  |          When session active:                              |
+|  db-01   |             RdpView / SshView / VncView                   |
+|  ci-box  |             via SessionViewSelector                       |
+|          |                                                            |
+| [+ Add]  |                                                            |
++----------+------------------------------------------[StatusBar]-------+
+</pre>
+<div class="note">
+  <strong>Keyboard shortcuts:</strong> Ctrl+K search, Ctrl+N new connection,
+  Ctrl+\ toggle sidebar, Ctrl+1-9 switch tabs, Ctrl+W close tab.
+  Sidebar resize via drag handle with pointer capture.
+</div>
+
+<!-- ==================== SidebarView ==================== -->
+<h2>SidebarView <span class="tag">Views/SidebarView.axaml</span></h2>
+<p class="desc">
+  Connection tree with collapsible groups, inline search filter, and recent connections.
+  Groups are recursive -- a group can contain child groups.
+  Double-click group name to rename inline. Right-click for context menu.
+</p>
+<pre class="wireframe">
++--------------------------+
+| [=]  EggDesk       [+]  |  &lt;-- app name + new connection button
++--------------------------+
+| * Search...       Ctrl+K |  &lt;-- inline filter (separate from Ctrl+K overlay)
++--------------------------+
+| v Favorites (3)          |  &lt;-- pinned connections
+|   * prod-web-01    [RDP] |
+|   * db-server      [SSH] |
+|   o backup-box     [VNC] |
++--------------------------+
+| v Production (5)         |  &lt;-- collapsible group
+|   * web-01         [RDP] |
+|   * web-02         [RDP] |
+|   * db-primary     [SSH] |
+|   o db-replica     [SSH] |
+|   o cache-01       [SSH] |
++--------------------------+
+| > Staging (3)            |  &lt;-- collapsed group
++--------------------------+
+| > Development (8)        |
++--------------------------+
+|  ------- Recent -------- |
+|   * db-primary     2m    |  &lt;-- last connected time
+|   o web-01         1h    |
++--------------------------+
+
+Status dots:
+  * green  = connected
+  ~ amber  = connecting
+  x red    = error
+  o gray   = idle
+</pre>
+<div class="note">
+  <strong>Connection list items</strong> show: status dot + name + host (small) + protocol badge.
+  Hover reveals connect button. Context menu: Connect | Edit | Duplicate | Delete | Pin.
+</div>
+
+<!-- ==================== SessionTab ==================== -->
+<h2>SessionTab <span class="tag">Controls/SessionTab.axaml</span></h2>
+<p class="desc">
+  Individual tab in the tab bar. Shows protocol icon, hostname, connection status dot,
+  and close button. Active tab has accent underline (2px). Middle-click to close.
+  Tabs are capped at 200px width; overflow scrolls horizontally.
+</p>
+<pre class="wireframe">
++--- Tab Bar (40px height) -------------------------------------------+
+|                                                                      |
+| [+ New]  +----------------+  +----------------+  +----------------+ |
+|          | [RDP] web-01 * x|  | [SSH] db-01 * x|  | [VNC] vnc-1 o x| |
+|          +=====[accent]====+  +----------------+  +----------------+ |
+|             ^active tab                                              |
++----------------------------------------------------------------------+
+
+Single tab detail:
++---------------------------+
+| [icon] hostname  [*] [x] |
++---------------------------+
+  icon = protocol (RDP/SSH/VNC)
+  [*]  = status dot (colored)
+  [x]  = close button (11px)
+
+  Active:  accent underline, lighter bg
+  Hover:   BgHover background
+  Default: transparent
+</pre>
+
+<!-- ==================== RdpView ==================== -->
+<h2>RdpView <span class="tag">Views/RdpView.axaml</span></h2>
+<p class="desc">
+  Displays the remote desktop framebuffer as a WriteableBitmap inside an Avalonia Image.
+  Auto-hide toolbar appears on mouse hover at top. Keyboard/mouse events forwarded to backend.
+  Ctrl+Alt+Break releases keyboard focus.
+</p>
+<pre class="wireframe">
++----------------------------------------------------------------------+
+| TOOLBAR (auto-hide on hover, 40px)                                   |
+| [Fit Window] [Fullscreen] [Screenshot] [Ctrl+Alt+Del] [Disconnect]  |
++----------------------------------------------------------------------+
+|                                                                      |
+|                                                                      |
+|            +--------------------------------------------+            |
+|            |                                            |            |
+|            |    Remote Desktop Framebuffer              |            |
+|            |    (WriteableBitmap in Image control)      |            |
+|            |                                            |            |
+|            |    Resolution matches window size          |            |
+|            |    All keyboard/mouse captured             |            |
+|            |                                            |            |
+|            +--------------------------------------------+            |
+|                                                                      |
++----------------------------------------------------------------------+
+| StatusBar: [* Connected] [prod-web-01] [RDP] [24ms] [1920x1080]     |
++----------------------------------------------------------------------+
+
+Backend:
+  Windows = WindowsRdpBackend (AxMSTscLib COM) -- STUB
+  macOS   = FreeRdpBackend (P/Invoke)          -- PARTIAL
+  Linux   = FreeRdpBackend (P/Invoke)          -- PARTIAL
+</pre>
+
+<!-- ==================== SshView ==================== -->
+<h2>SshView <span class="tag">Views/SshView.axaml</span></h2>
+<p class="desc">
+  Terminal emulator rendering into a WriteableBitmap. Target: JetBrains Mono 13px.
+  VT100/xterm-256color support via Vt100Parser + TerminalBuffer.
+  Currently placeholder -- renders dots instead of glyphs.
+</p>
+<pre class="wireframe">
++----------------------------------------------------------------------+
+|                                                                      |
+| JetBrains Mono 13px, background #0F1117                             |
+|                                                                      |
+| user@db-primary:~$ sudo systemctl status nginx                      |
+| * nginx.service - A high performance web server                     |
+|    Loaded: loaded (/lib/systemd/system/nginx...)                    |
+|    Active: active (running) since Mon 2026-01...                    |
+|                                                                      |
+| user@db-primary:~$ _                                                |
+|                                                                      |
+|                                                                      |
+|                                                                      |
++----------------------------------------------------------------------+
+| [* Connected] [db-primary] [SSH] [12ms]                              |
++----------------------------------------------------------------------+
+
+Terminal features (target):
+  - VT100 + xterm-256color + truecolor SGR
+  - Cursor movement, erase, scroll regions
+  - 10,000 line scrollback buffer
+  - 60fps render via DispatcherTimer
+
+Current status: PLACEHOLDER
+  - Vt100Parser: CSI sequences implemented
+  - TerminalBuffer: char/attr grid works
+  - SshView: renders single pixel per cell (no glyph rendering)
+</pre>
+
+<!-- ==================== VncView ==================== -->
+<h2>VncView <span class="tag">Views/VncView.axaml</span></h2>
+<p class="desc">
+  VNC session display. Same pattern as RdpView -- framebuffer in WriteableBitmap,
+  auto-hide toolbar on hover. Backend: RemoteViewing library. Minimal implementation.
+</p>
+<pre class="wireframe">
++----------------------------------------------------------------------+
+| TOOLBAR (auto-hide)                                                  |
+| [Screenshot] [Send Ctrl+Alt+Del] [Clipboard Sync] [Disconnect]      |
++----------------------------------------------------------------------+
+|                                                                      |
+|            +--------------------------------------------+            |
+|            |                                            |            |
+|            |    VNC Framebuffer                         |            |
+|            |    (WriteableBitmap in Image control)      |            |
+|            |                                            |            |
+|            |    VncSessionManager connects via          |            |
+|            |    RemoteViewing.VncClient                 |            |
+|            |                                            |            |
+|            +--------------------------------------------+            |
+|                                                                      |
++----------------------------------------------------------------------+
+| [* Connected] [vnc-server] [VNC] [5900]                              |
++----------------------------------------------------------------------+
+
+Status: MINIMAL (~20%)
+  - Connect/disconnect works
+  - Framebuffer display works
+  - Toolbar buttons NOT wired to commands
+  - No input forwarding
+  - Not integrated with main SessionManager
+</pre>
+
+<!-- ==================== WelcomeView ==================== -->
+<h2>WelcomeView <span class="tag">Views/WelcomeView.axaml</span></h2>
+<p class="desc">
+  Shown in the session pane when no tabs are open. Displays app branding,
+  action buttons, recent connections list, and keyboard shortcut hints.
+  If not authenticated, shows GitHub sign-in prompt.
+</p>
+<pre class="wireframe">
++----------------------------------------------------------------------+
+|                                                                      |
+|                                                                      |
+|                     EggDesk  by Eggspot                              |
+|                                                                      |
+|              Connect to your servers faster.                         |
+|                                                                      |
+|      [+ New Connection]        [Import Connections]                  |
+|                                                                      |
+|  ------------------- Recent ----------------------------            |
+|  * prod-web-01        RDP         2 min ago                         |
+|  o db-primary         SSH         1 hour ago                        |
+|  o staging-box        VNC         yesterday                         |
+|                                                                      |
+|  ------------------- Quick Tips -------------------------           |
+|  Ctrl+K   Search connections                                        |
+|  Ctrl+N   New connection                                            |
+|  Ctrl+\   Toggle sidebar                                            |
+|                                                                      |
+|                                                                      |
+|  --- Not signed in? ---                                              |
+|  Sign in with GitHub to sync your vault across devices.             |
+|  [Connect with GitHub]                                               |
+|                                                                      |
++----------------------------------------------------------------------+
+</pre>
+
+<!-- ==================== VaultUnlockDialog ==================== -->
+<h2>VaultUnlockDialog <span class="tag">Dialogs/VaultUnlockDialog.axaml</span></h2>
+<p class="desc">
+  Modal dialog for unlocking the vault with a master password (fallback mode only).
+  Currently NON-FUNCTIONAL -- the Unlock button has no handler and the checkbox has no binding.
+</p>
+<pre class="wireframe">
++------------------------------------------+
+|  Unlock vault                        [x] |
++------------------------------------------+
+|                                          |
+|  Enter your master password to           |
+|  access credentials.                     |
+|                                          |
+|  +------------------------------------+  |
+|  | ********************************** |  |
+|  +------------------------------------+  |
+|  Master password                         |
+|                                          |
+|  [ ] Remember for this session           |
+|                                          |
+|  +====================================+  |
+|  |            Unlock                   |  |
+|  +====================================+  |
+|                                          |
++------------------------------------------+
+
+Status: NON-FUNCTIONAL
+  - AXAML layout exists
+  - No Click handler on Unlock button
+  - No binding on Remember checkbox
+  - Needs ViewModel or code-behind wiring
+</pre>
+
+<!-- ==================== NewConnectionDialog ==================== -->
+<h2>NewConnectionDialog <span class="tag">Dialogs/NewConnectionDialog.axaml</span></h2>
+<p class="desc">
+  Dialog for creating a new connection. Good MVVM with compiled bindings.
+  Protocol toggle auto-updates default port. Credential builder with optional password storage.
+</p>
+<pre class="wireframe">
++----------------------------------------------+
+|  New Connection                          [x] |
++----------------------------------------------+
+|                                              |
+|  Protocol   (RDP)  (SSH)  (VNC)             |
+|              ^^^^                            |
+|              selected = accent bg            |
+|                                              |
+|  Name     [                              ]   |
+|  Host     [                              ]   |
+|  Port     [ 3389   ]                        |
+|            auto-updates: RDP=3389            |
+|            SSH=22, VNC=5900                  |
+|                                              |
+|  --- Credentials ---                        |
+|  Username [                              ]   |
+|  Password [                              ]   |
+|  [ ] Remember password                      |
+|                                              |
+|  --- Organization ---                       |
+|  Group    [ Default v ]                     |
+|  Tags     [                              ]   |
+|                                              |
+|        [Cancel]        [Save & Connect]     |
+|                                              |
++----------------------------------------------+
+
+ViewModel: NewConnectionDialogViewModel
+  - Protocol enum with auto-port
+  - IsValid computed property gates Save
+  - BuildConnection() / BuildCredential()
+</pre>
+
+<!-- ==================== SettingsView ==================== -->
+<h2>SettingsView <span class="tag">Views/SettingsView.axaml</span></h2>
+<p class="desc">
+  Tabbed settings panel with 6 sections. Rendered inside MainWindow session pane
+  (not a dialog). Full MVVM with compiled bindings, empty code-behind.
+</p>
+<pre class="wireframe">
++----------------------------------------------------------------------+
+| [General] [Appearance] [Vault &amp; Sync] [Devices] [Shortcuts] [About] |
++----------------------------------------------------------------------+
+|                                                                      |
+| === Vault &amp; Sync ===                                                |
+|                                                                      |
+| Identity     * github.com/you  (GitHub)                             |
+|              [Disconnect]                                            |
+|                                                                      |
+| -- or, if not connected: --                                         |
+| [Connect with GitHub]  [Use PAT]  [Connect Bitbucket]               |
+|                                                                      |
+| Vault status   * Unlocked - derived from GitHub identity            |
+|                [Lock Now]   [ ] Lock on screen lock                  |
+|                                                                      |
+| Git remote     github.com/you/spotdesk-vault                        |
+|                [Change repo]                                         |
+|                                                                      |
+| Last synced    2 minutes ago   [Sync Now ^]                         |
+| Auto-sync      [Every 5 min v]                                      |
+|                                                                      |
+| Encryption     AES-256-GCM / Argon2id / per-device key envelope     |
+|                                                                      |
+| --- Advanced (collapsed) ---                                         |
+| [Switch to master password mode]                                     |
+| [Migrate local vault to GitHub]                                      |
+|                                                                      |
+| === Trusted Devices ===                                              |
+|                                                                      |
+| * MacBook Pro (work)    this device    Added 2026-03-01             |
+| * Windows PC (home)                   Added 2026-03-10              |
+| o Old Laptop                          Added 2025-11-05  [Revoke]   |
+|                                                                      |
+| [+ Approve new device]                                               |
+|                                                                      |
++----------------------------------------------------------------------+
+
+Status: MOSTLY FUNCTIONAL
+  - General, Appearance, Vault &amp; Sync, Devices, About: working
+  - SSH Keys tab: placeholder (buttons unwired)
+  - Shortcuts tab: working display
+  - Revoke button: NOT wired to RevokeDeviceCommand
+</pre>
+
+<!-- ==================== ImportWizard ==================== -->
+<h2>ImportWizard <span class="tag">Dialogs/ImportWizard.axaml</span></h2>
+<p class="desc">
+  3-step import wizard. Supports .rdp, .rdm (Devolutions), mRemoteNG XML, MobaXterm .ini.
+  Drag-and-drop file selection. Preview entries before import.
+</p>
+<pre class="wireframe">
+Step 1: Select File
++----------------------------------------------+
+| Import Connections               Step 1 of 3 |
++----------------------------------------------+
+|                                              |
+|  +--------------------------------------+    |
+|  |                                      |    |
+|  |    Drag your file here               |    |
+|  |    or click to browse                |    |
+|  |                                      |    |
+|  +--------------------------------------+    |
+|                                              |
+|  Supports: .rdp  .rdm  .xml  .ini          |
+|                                              |
+|       [Cancel]              [Next -->]      |
++----------------------------------------------+
+
+Step 2: Preview
++----------------------------------------------+
+| Import Connections               Step 2 of 3 |
++----------------------------------------------+
+|                                              |
+|  Found: 47 connections in "export.rdm"      |
+|                                              |
+|  [x] Name            Host        Protocol   |
+|  [x] prod-web-01     10.0.1.1    RDP       |
+|  [x] db-primary      10.0.1.2    SSH       |
+|  [x] staging         10.0.2.1    RDP       |
+|  [ ] old-server      10.0.3.1    VNC       |
+|                                              |
+|  [Select All]  [Select None]                |
+|                                              |
+|    [<-- Back]               [Next -->]      |
++----------------------------------------------+
+
+Step 3: Import
++----------------------------------------------+
+| Import Connections               Step 3 of 3 |
++----------------------------------------------+
+|                                              |
+|  Importing 46 of 47 connections...          |
+|                                              |
+|  [=============================--------]    |
+|  34 / 46                                    |
+|                                              |
+|  * prod-web-01     imported                 |
+|  * db-primary      imported                 |
+|  x old-format      skipped (unsupported)    |
+|                                              |
+|    [<-- Back]               [Finish]        |
++----------------------------------------------+
+</pre>
+
+<!-- ==================== OAuthConnectDialog ==================== -->
+<h2>OAuthConnectDialog <span class="tag">Dialogs/OAuthConnectDialog.axaml</span></h2>
+<p class="desc">
+  Shown on first launch when no keychain token exists. Supports GitHub Device Flow,
+  GitHub PAT, and Bitbucket App Password. All logic is in code-behind (no ViewModel).
+</p>
+<pre class="wireframe">
++----------------------------------------------+
+|  Connect EggDesk                         [x] |
++----------------------------------------------+
+|                                              |
+|  Your vault is encrypted using your          |
+|  GitHub identity. No master password         |
+|  required.                                   |
+|                                              |
+|  +========================================+  |
+|  |       Connect with GitHub              |  |
+|  +========================================+  |
+|                                              |
+|  [Connect with Bitbucket]                    |
+|                                              |
+|  [Use master password instead]               |
+|                                              |
++----------------------------------------------+
+
+--- GitHub Device Flow panel ---
++----------------------------------------------+
+|  GitHub Device Flow                          |
+|                                              |
+|  1. Go to: https://github.com/login/device  |
+|                                              |
+|  2. Enter code:                              |
+|     +==============+                         |
+|     |  ABCD-1234   |    [Copy]              |
+|     +==============+                         |
+|                                              |
+|  Waiting for authorization...                |
+|  [Cancel]                                    |
++----------------------------------------------+
+
+--- PAT panel ---
++----------------------------------------------+
+|  GitHub Personal Access Token                |
+|                                              |
+|  Paste a token with 'read:user' scope:      |
+|  [                                       ]   |
+|                                              |
+|  [Cancel]              [Connect]             |
++----------------------------------------------+
+
+Status: FUNCTIONAL (poor MVVM)
+  - All logic in code-behind
+  - CancellationTokenSource never disposed
+  - Panel switching via string literals
+  - Should be refactored to ViewModel
+</pre>
+
+<footer>
+  EggDesk by Eggspot Company Limited, Ho Chi Minh City, Vietnam<br>
+  .NET 10 / AvaloniaUI 11 / C# 13 -- MIT License
+</footer>
+
+</body>
+</html>
