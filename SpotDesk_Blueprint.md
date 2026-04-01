@@ -25,7 +25,7 @@
 EggDesk (codebase: SpotDesk) is a cross-platform remote desktop manager built by Eggspot Company Limited. It manages RDP, SSH, and VNC connections from a single tabbed UI with an encrypted vault, optional Git-based sync, and native performance on Windows, macOS, and Linux.
 
 **Core differentiators:**
-- **No master password by default** -- vault key derived from GitHub/Bitbucket OAuth identity + device fingerprint
+- **No master password by default** -- vault key derived from GitHub OAuth identity + device fingerprint
 - **Single-file delivery** -- one executable per platform, no installer required
 - **Sub-50ms tab switching** -- sessions stay alive in memory, framebuffer reattach only
 - **NativeAOT on Windows** -- no .NET runtime install needed
@@ -60,7 +60,7 @@ Linux and macOS share `FreeRdpBackend.cs`. The `IRdpBackend` interface abstracts
 SpotDesk.sln
 +----- src/
 |      +-- SpotDesk.Core/           # Domain: vault, crypto, auth, sync, import
-|      |   +-- Auth/                # OAuth (GitHub Device Flow + PAT, Bitbucket)
+|      |   +-- Auth/                # OAuth (GitHub Device Flow + PAT), Raw Git credentials
 |      |   +-- Crypto/             # AES-256-GCM, Argon2id KDF, device fingerprint
 |      |   +-- Import/             # .rdp, .rdm, mRemoteNG, MobaXterm importers
 |      |   +-- Models/             # ConnectionEntry, CredentialEntry, ConnectionGroup
@@ -151,7 +151,7 @@ var services = new ServiceCollection()
 | VaultService | **Implemented** | Unlock (GitHub + local modes), CRUD entries, device management, vault migration. |
 | VaultModel | **Implemented** | JSON source-gen. VaultFile, DeviceEnvelope, VaultEntry records. |
 | SessionLockService | **Implemented** | GCHandle pinned memory. Lock/unlock/dispose. |
-| OAuthService | **Implemented** | GitHub Device Flow + PAT, Bitbucket App Passwords. PKCE loopback. 24h identity cache. |
+| OAuthService | **Implemented** | GitHub Device Flow + PAT. PKCE loopback. 24h identity cache. |
 | KeychainService | **Implemented** | Windows CredWrite, macOS SecKeychain, Linux libsecret/file fallback. |
 | MasterPasswordFallback | **Implemented** | Same Argon2id with user-supplied password + random salt. |
 | GitSyncService | **Implemented** | LibGit2Sharp clone/pull/push. Offline queue with backoff. |
@@ -160,7 +160,8 @@ var services = new ServiceCollection()
 | DevolutionsImporter | **Implemented** | .rdm XML and JSON. Protocol mapping, group hierarchy. Encrypted files: NotImplemented. |
 | MRemoteNgImporter | **Implemented** | mRemoteNG confCons.xml parser. Protocol mapping, group nesting. |
 | MobaXtermImporter | **Implemented** | MobaXterm .ini parser. SSH/Telnet/RDP/VNC section parsing. |
-| OAuthClientConfig | **Implemented** | Env var overrides, bundled GitHub client ID, Bitbucket client secret. |
+| OAuthClientConfig | **Implemented** | Env var overrides, bundled GitHub client ID. |
+| RawGitCredentialService | **Implemented** | Username/password credential storage for any Git HTTPS remote. |
 
 ### SpotDesk.Protocols
 
@@ -488,8 +489,7 @@ Vault mutation
 9. **Fix SessionManager.GetOrAdd race** -- use Lazy<T> pattern
 10. **Fix blocking async in SessionManager.Close()** -- use async disposal
 11. **Implement macOS keychain Delete** -- currently silent no-op
-12. **Fix Bitbucket user-info fetch** -- missing auth header
-13. **Thread-safe GitSyncService queue** -- replace Queue with ConcurrentQueue
+12. **Thread-safe GitSyncService queue** -- replace Queue with ConcurrentQueue
 14. **Wire ConflictResolver into GitSyncService** -- handle non-fast-forward
 
 ### P2 -- Medium (quality & UX)

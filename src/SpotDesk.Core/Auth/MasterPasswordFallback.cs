@@ -3,7 +3,7 @@ using SpotDesk.Core.Crypto;
 namespace SpotDesk.Core.Auth;
 
 /// <summary>
-/// Optional fallback when the user cannot use GitHub/Bitbucket OAuth.
+/// Optional fallback when the user cannot use GitHub OAuth.
 /// Uses the same Argon2id parameters as the device-key path.
 /// </summary>
 public class MasterPasswordFallback

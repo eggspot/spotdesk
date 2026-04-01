@@ -6,9 +6,7 @@ namespace SpotDesk.Core.Auth;
 /// </summary>
 public record OAuthClientConfig
 {
-    public string GitHubClientId         { get; init; } = string.Empty;
-    public string BitbucketClientId      { get; init; } = string.Empty;
-    public string BitbucketClientSecret  { get; init; } = string.Empty;
+    public string GitHubClientId { get; init; } = string.Empty;
 
     /// <summary>
     /// Public client ID registered for the SpotDesk GitHub OAuth App (Device Flow).
@@ -18,31 +16,17 @@ public record OAuthClientConfig
 
     /// <summary>True when at least the GitHub client ID has been configured.</summary>
     public bool IsGitHubConfigured  => !string.IsNullOrWhiteSpace(GitHubClientId);
-    public bool IsBitbucketConfigured =>
-        !string.IsNullOrWhiteSpace(BitbucketClientId) &&
-        !string.IsNullOrWhiteSpace(BitbucketClientSecret);
 
     /// <summary>
     /// Builds a config by merging a user-saved record with environment-variable overrides.
     /// Environment variables take precedence so CI pipelines can inject secrets without
     /// touching the on-disk prefs file.
     /// </summary>
-    public static OAuthClientConfig Resolve(
-        string? savedGitHubClientId,
-        string? savedBitbucketClientId,
-        string? savedBitbucketClientSecret) => new()
+    public static OAuthClientConfig Resolve(string? savedGitHubClientId) => new()
     {
         GitHubClientId = Coalesce(
             Environment.GetEnvironmentVariable("SPOTDESK_GITHUB_CLIENT_ID"),
             savedGitHubClientId),
-
-        BitbucketClientId = Coalesce(
-            Environment.GetEnvironmentVariable("SPOTDESK_BITBUCKET_CLIENT_ID"),
-            savedBitbucketClientId),
-
-        BitbucketClientSecret = Coalesce(
-            Environment.GetEnvironmentVariable("SPOTDESK_BITBUCKET_CLIENT_SECRET"),
-            savedBitbucketClientSecret),
     };
 
     private static string Coalesce(params string?[] values)

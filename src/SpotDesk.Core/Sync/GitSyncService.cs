@@ -23,6 +23,7 @@ public interface IGitSyncService
 public class GitSyncService : IGitSyncService
 {
     private readonly IKeychainService _keychain;
+    private readonly IRawGitCredentialService? _rawGit;
 
     // ── Offline queue ─────────────────────────────────────────────────────
     // When offline, paths are queued. FlushPendingAsync drains the queue
@@ -33,17 +34,37 @@ public class GitSyncService : IGitSyncService
 
     public event Action<SyncEvent, string?> OnSyncEvent = delegate { };
 
-    public GitSyncService(IKeychainService keychain) => _keychain = keychain;
+    public GitSyncService(IKeychainService keychain, IRawGitCredentialService? rawGit = null)
+    {
+        _keychain = keychain;
+        _rawGit = rawGit;
+    }
 
     /// <summary>
-    /// Returns the best available token for git operations:
-    /// vault-repo fine-grained PAT first (scoped to one repo),
-    /// then falls back to the GitHub identity token.
+    /// Returns the best available credentials for git operations.
+    /// Priority: vault-repo fine-grained PAT → GitHub identity token → raw git credentials for the remote URL.
     /// </summary>
-    private string ResolveGitToken() =>
-        _keychain.Retrieve(KeychainKeys.VaultRepoPat)
-        ?? _keychain.Retrieve(KeychainKeys.GitHub)
-        ?? string.Empty;
+    private Credentials ResolveCredentials(string url)
+    {
+        // Try GitHub token-based auth first
+        var token = _keychain.Retrieve(KeychainKeys.VaultRepoPat)
+            ?? _keychain.Retrieve(KeychainKeys.GitHub);
+
+        if (!string.IsNullOrEmpty(token))
+            return new UsernamePasswordCredentials { Username = "x-token", Password = token };
+
+        // Fall back to raw git credentials for this remote URL
+        if (_rawGit is not null)
+        {
+            var rawCred = _rawGit.Retrieve(url);
+            if (rawCred is not null)
+                return new UsernamePasswordCredentials { Username = rawCred.Value.Username, Password = rawCred.Value.Password };
+        }
+
+        throw new InvalidOperationException(
+            "No credentials available for git operations. " +
+            "Sign in with GitHub or configure a Raw Git credential in Settings.");
+    }
 
     public async Task InitOrCloneAsync(string repoUrl, string localPath, CancellationToken ct = default)
     {
@@ -51,10 +72,9 @@ public class GitSyncService : IGitSyncService
         {
             if (Repository.IsValid(localPath)) return;
 
-            var token = ResolveGitToken();
             var options = new CloneOptions
             {
-                FetchOptions = { CredentialsProvider = (_, _, _) => BuildCredentials(token) }
+                FetchOptions = { CredentialsProvider = (_, _, _) => ResolveCredentials(repoUrl) }
             };
             Repository.Clone(repoUrl, localPath, options);
         }, ct);
@@ -68,14 +88,15 @@ public class GitSyncService : IGitSyncService
             await Task.Run(() =>
             {
                 using var repo = new Repository(localPath);
-                var token = ResolveGitToken();
+                var remote = repo.Network.Remotes["origin"];
+                var remoteUrl = remote?.Url ?? string.Empty;
 
                 // Pull — fast-forward only
                 var pullOptions = new PullOptions
                 {
                     FetchOptions = new FetchOptions
                     {
-                        CredentialsProvider = (_, _, _) => BuildCredentials(token)
+                        CredentialsProvider = (_, _, _) => ResolveCredentials(remoteUrl)
                     },
                     MergeOptions = new MergeOptions { FastForwardStrategy = FastForwardStrategy.FastForwardOnly }
                 };
@@ -96,7 +117,7 @@ public class GitSyncService : IGitSyncService
                 // Push
                 var pushOptions = new PushOptions
                 {
-                    CredentialsProvider = (_, _, _) => BuildCredentials(token)
+                    CredentialsProvider = (_, _, _) => ResolveCredentials(remoteUrl)
                 };
                 repo.Network.Push(repo.Head, pushOptions);
             }, ct);
@@ -143,9 +164,6 @@ public class GitSyncService : IGitSyncService
             }
         }
     }
-
-    private static UsernamePasswordCredentials BuildCredentials(string token) =>
-        new() { Username = "x-token", Password = token };
 
     private static Signature BuildSignature() =>
         new("SpotDesk", "sync@spotdesk.app", DateTimeOffset.UtcNow);

@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SpotDesk.UI.Dialogs.OAuthConnectDialog"
-        Title="Connect SpotDesk"
+        Title="Connect to GitHub"
         Width="420" SizeToContent="Height"
         MinHeight="260"
         CanResize="False"
@@ -25,14 +25,6 @@ No master password required. Your credentials never leave your devices."
       <Button x:Name="GitHubButton"
               Content="Connect with GitHub"
               Classes="primary-button"
-              HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center"/>
-
-      <Button x:Name="BitbucketButton"
-              Content="Connect with Bitbucket App Password"
-              Background="{DynamicResource BgSurfaceBrush}"
-              Foreground="{DynamicResource TextPrimaryBrush}"
-              CornerRadius="6" Padding="16,8"
               HorizontalAlignment="Stretch"
               HorizontalContentAlignment="Center"/>
 
@@ -69,43 +61,6 @@ No master password required. Your credentials never leave your devices."
               Foreground="{DynamicResource TextPrimaryBrush}"
               CornerRadius="6" Padding="16,8"
               HorizontalAlignment="Center"/>
-    </StackPanel>
-
-    <!-- ── Bitbucket App Password panel ─────────────────────────── -->
-    <StackPanel x:Name="BitbucketPanel" IsVisible="False" Spacing="12">
-      <TextBlock Text="Create an App Password at bitbucket.org → Account → App passwords.
-Required scopes: Account (read), Repositories (read, write)."
-                 FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                 TextWrapping="Wrap"/>
-      <StackPanel Spacing="6">
-        <TextBlock Text="Username" FontSize="12"
-                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-        <TextBox x:Name="BitbucketUsernameBox" Watermark="your-bitbucket-username"
-                 Background="{DynamicResource BgSurfaceBrush}"
-                 BorderBrush="{DynamicResource BorderDefaultBrush}" CornerRadius="6"/>
-      </StackPanel>
-      <StackPanel Spacing="6">
-        <TextBlock Text="App Password" FontSize="12"
-                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-        <TextBox x:Name="BitbucketPasswordBox" PasswordChar="•"
-                 Watermark="ATBB_xxxxxxxxxxxx"
-                 Background="{DynamicResource BgSurfaceBrush}"
-                 BorderBrush="{DynamicResource BorderDefaultBrush}" CornerRadius="6"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button x:Name="ConnectBitbucketButton"
-                Content="Connect Bitbucket"
-                Classes="primary-button"/>
-        <Button x:Name="BackFromBitbucketButton"
-                Content="Back"
-                Background="{DynamicResource BgSurfaceBrush}"
-                Foreground="{DynamicResource TextPrimaryBrush}"
-                CornerRadius="6" Padding="16,8"/>
-      </StackPanel>
-      <TextBlock x:Name="BitbucketStatusLabel"
-                 FontSize="12" HorizontalAlignment="Center"
-                 Foreground="{DynamicResource TextSecondaryBrush}"
-                 IsVisible="False"/>
     </StackPanel>
 
   </StackPanel>

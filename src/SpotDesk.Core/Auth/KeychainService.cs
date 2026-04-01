@@ -9,7 +9,6 @@ namespace SpotDesk.Core.Auth;
 public static class KeychainKeys
 {
     public const string GitHub    = "spotdesk:oauth:github";
-    public const string Bitbucket = "spotdesk:oauth:bitbucket";
     public const string Master    = "spotdesk:master";
     /// <summary>
     /// Fine-grained Personal Access Token scoped to the single vault repository.

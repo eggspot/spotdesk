@@ -252,72 +252,6 @@ public class M1_OAuthTests
             .Should().ThrowAsync<OperationCanceledException>();
     }
 
-    // ── Bitbucket App Password ────────────────────────────────────────────────
-
-    private static string BitbucketUserJson(string accountId = "acc123", string username = "alice") =>
-        $$$"""{"account_id":"{{{accountId}}}","username":"{{{username}}}"}""";
-
-    [Fact]
-    public async Task BitbucketAppPassword_Valid_ReturnsIdentityAndStoresCredential()
-    {
-        var handler  = new MockHttpMessageHandler();
-        var keychain = new InMemoryKeychainService();
-        handler.EnqueueOk(BitbucketUserJson("acc1", "alice"));
-
-        var svc      = BuildService(handler, keychain);
-        var identity = await svc.AuthenticateWithBitbucketAppPasswordAsync("alice", "ATBB_secret");
-
-        identity.UserId.Should().Be("acc1");
-        identity.Username.Should().Be("alice");
-        // Stored as "username:appPassword" for Basic auth in git operations
-        keychain.Retrieve(KeychainKeys.Bitbucket).Should().Be("alice:ATBB_secret");
-    }
-
-    [Fact]
-    public async Task BitbucketAppPassword_EmptyUsername_ThrowsArgumentException()
-    {
-        var svc = BuildService(new MockHttpMessageHandler());
-
-        await svc.Invoking(s => s.AuthenticateWithBitbucketAppPasswordAsync("", "ATBB_x"))
-            .Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*username*");
-    }
-
-    [Fact]
-    public async Task BitbucketAppPassword_EmptyPassword_ThrowsArgumentException()
-    {
-        var svc = BuildService(new MockHttpMessageHandler());
-
-        await svc.Invoking(s => s.AuthenticateWithBitbucketAppPasswordAsync("alice", "  "))
-            .Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*password*");
-    }
-
-    [Fact]
-    public async Task BitbucketAppPassword_ApiReturns401_ThrowsHttpRequestException()
-    {
-        var handler = new MockHttpMessageHandler();
-        handler.Enqueue(HttpStatusCode.Unauthorized, """{"type":"error","error":{"message":"Invalid credentials"}}""");
-
-        var svc = BuildService(handler);
-
-        await svc.Invoking(s => s.AuthenticateWithBitbucketAppPasswordAsync("alice", "bad_pass"))
-            .Should().ThrowAsync<HttpRequestException>();
-    }
-
-    [Fact]
-    public async Task BitbucketAppPassword_TrimsWhitespace()
-    {
-        var handler  = new MockHttpMessageHandler();
-        var keychain = new InMemoryKeychainService();
-        handler.EnqueueOk(BitbucketUserJson("acc2", "bob"));
-
-        var svc = BuildService(handler, keychain);
-        await svc.AuthenticateWithBitbucketAppPasswordAsync("  bob  ", "  ATBB_trimmed  ");
-
-        keychain.Retrieve(KeychainKeys.Bitbucket).Should().Be("bob:ATBB_trimmed");
-    }
-
     // ── IsAuthenticated / Revoke ───────────────────────────────────────────────
 
     [Fact]
@@ -353,7 +287,7 @@ public class M1_OAuthTests
         Environment.SetEnvironmentVariable("SPOTDESK_GITHUB_CLIENT_ID", "env-id");
         try
         {
-            var cfg = OAuthClientConfig.Resolve("saved-id", null, null);
+            var cfg = OAuthClientConfig.Resolve("saved-id");
             cfg.GitHubClientId.Should().Be("env-id");
         }
         finally
@@ -366,7 +300,7 @@ public class M1_OAuthTests
     public void OAuthClientConfig_Resolve_FallsBackToSavedPrefs()
     {
         Environment.SetEnvironmentVariable("SPOTDESK_GITHUB_CLIENT_ID", null);
-        var cfg = OAuthClientConfig.Resolve("my-client-id", null, null);
+        var cfg = OAuthClientConfig.Resolve("my-client-id");
         cfg.GitHubClientId.Should().Be("my-client-id");
     }
 
@@ -374,7 +308,7 @@ public class M1_OAuthTests
     public void OAuthClientConfig_Resolve_EmptyWhenNothingConfigured()
     {
         Environment.SetEnvironmentVariable("SPOTDESK_GITHUB_CLIENT_ID", null);
-        var cfg = OAuthClientConfig.Resolve(null, null, null);
+        var cfg = OAuthClientConfig.Resolve(null);
         cfg.IsGitHubConfigured.Should().BeFalse();
     }
 

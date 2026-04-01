@@ -2,7 +2,7 @@
 
 **Cross-platform remote desktop manager** built with .NET 10 and AvaloniaUI by [Eggspot](https://github.com/eggspot).
 
-Manage RDP, SSH, and VNC connections from a single app -- with an encrypted local vault, optional GitHub/Bitbucket sync, and a clean dark UI that runs natively on Windows, macOS, and Linux.
+Manage RDP, SSH, and VNC connections from a single app -- with an encrypted local vault, optional GitHub sync or any Git remote with username/password, and a clean dark UI that runs natively on Windows, macOS, and Linux.
 
 ---
 
@@ -11,7 +11,7 @@ Manage RDP, SSH, and VNC connections from a single app -- with an encrypted loca
 - **RDP, SSH, VNC** -- native backends per platform (AxMSTscLib on Windows, FreeRDP on macOS/Linux, SSH.NET terminal)
 - **Encrypted vault** -- AES-256-GCM with Argon2id key derivation. Two modes:
   - **Local mode** -- password-only, no account required, works offline forever
-  - **GitHub/Bitbucket sync** -- vault synced as a private Git repo across your devices
+  - **GitHub OAuth or any Git remote with username/password** -- vault synced as a private Git repo across your devices
 - **Tabbed sessions** -- tab switch < 50 ms; sessions stay alive in background
 - **Global search** -- fuzzy-match across all connections (Ctrl+K)
 - **Group & tag connections** -- organize by environment, protocol, or team
@@ -23,9 +23,9 @@ Manage RDP, SSH, and VNC connections from a single app -- with an encrypted loca
 
 ## Vault Modes
 
-| | Local Mode | GitHub/Bitbucket Sync |
+| | Local Mode | Git Sync |
 |---|---|---|
-| Account required | None | GitHub or Bitbucket |
+| Account required | None | GitHub or any Git remote |
 | Encrypted at rest | Yes (AES-256-GCM) | Yes (AES-256-GCM) |
 | Sync across devices | No | Yes (private Git repo) |
 | Works offline | Yes | Yes (cached locally) |

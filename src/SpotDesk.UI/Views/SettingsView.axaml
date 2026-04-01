@@ -211,49 +211,66 @@
                          IsVisible="{Binding LastSyncedAt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
             </StackPanel>
 
-            <!-- ── Bitbucket Sync ── -->
+            <!-- ── Custom Git Remote ── -->
             <StackPanel Spacing="8">
-              <TextBlock Text="Bitbucket Sync"
+              <TextBlock Text="Custom Git Remote"
                          FontSize="14" FontWeight="Medium"
                          Foreground="{DynamicResource TextPrimaryBrush}"/>
+              <TextBlock FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                         TextWrapping="Wrap" MaxWidth="480"
+                         Text="Use username and password to authenticate with any Git HTTPS remote (Gitea, GitLab, self-hosted, etc.)."/>
 
               <!-- Not connected -->
-              <StackPanel Spacing="8" IsVisible="{Binding !IsBitbucketConnected}">
-                <TextBlock Text="Enter your Bitbucket username and an App Password.
-Create one at: bitbucket.org → Account → App passwords
-Required scopes: Account (read), Repositories (read, write)."
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondaryBrush}"
-                           TextWrapping="Wrap"/>
-                <TextBox Text="{Binding BitbucketUsername}"
-                         Watermark="your-bitbucket-username"
-                         Background="{DynamicResource BgSurfaceBrush}"
-                         BorderBrush="{DynamicResource BorderDefaultBrush}"
-                         CornerRadius="6" Width="300"/>
-                <TextBox Text="{Binding BitbucketAppPassword}" PasswordChar="•"
-                         Watermark="ATBB_xxxxxxxxxxxx"
-                         Background="{DynamicResource BgSurfaceBrush}"
-                         BorderBrush="{DynamicResource BorderDefaultBrush}"
-                         CornerRadius="6" Width="300"/>
+              <StackPanel Spacing="8" IsVisible="{Binding !IsRawGitConnected}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Remote URL" FontSize="12"
+                             Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBox Text="{Binding RawGitRemoteUrl}"
+                           Watermark="https://github.com/user/vault-repo.git"
+                           Background="{DynamicResource BgSurfaceBrush}"
+                           BorderBrush="{DynamicResource BorderDefaultBrush}"
+                           CornerRadius="6" Width="400"/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Username" FontSize="12"
+                             Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBox Text="{Binding RawGitUsername}"
+                           Watermark="your-username"
+                           Background="{DynamicResource BgSurfaceBrush}"
+                           BorderBrush="{DynamicResource BorderDefaultBrush}"
+                           CornerRadius="6" Width="300"/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Password" FontSize="12"
+                             Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBox Text="{Binding RawGitPassword}" PasswordChar="•"
+                           Watermark="password or token"
+                           Background="{DynamicResource BgSurfaceBrush}"
+                           BorderBrush="{DynamicResource BorderDefaultBrush}"
+                           CornerRadius="6" Width="300"/>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Classes="primary-button" Content="Connect Bitbucket"
-                          Command="{Binding ConnectBitbucketCommand}"/>
-                  <TextBlock Text="{Binding BitbucketStatus}"
+                  <Button Classes="primary-button" Content="Connect"
+                          Command="{Binding ConnectRawGitCommand}"/>
+                  <TextBlock Text="{Binding RawGitStatus}"
                              FontSize="12" VerticalAlignment="Center"
                              Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
               </StackPanel>
 
               <!-- Connected -->
-              <StackPanel Spacing="8" IsVisible="{Binding IsBitbucketConnected}">
-                <TextBlock Text="{Binding BitbucketDisplayName, StringFormat='● bitbucket.org/{0}'}"
-                           FontSize="13"
-                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              <StackPanel Spacing="8" IsVisible="{Binding IsRawGitConnected}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="●" FontSize="13" Foreground="#22C55E" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding RawGitStatus}"
+                             FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
                 <Button Content="Disconnect"
                         Background="{DynamicResource BgElevatedBrush}"
                         Foreground="{DynamicResource TextPrimaryBrush}"
                         CornerRadius="6" Padding="16,8"
-                        Command="{Binding DisconnectBitbucketCommand}"/>
+                        Command="{Binding DisconnectRawGitCommand}"/>
               </StackPanel>
             </StackPanel>
 

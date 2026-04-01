@@ -19,6 +19,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly LocalPrefsService _prefs;
     private readonly IGitSyncService? _syncService;
     private readonly IKeychainService _keychain;
+    private readonly IRawGitCredentialService? _rawGitCredential;
     private readonly string _deviceId;
 
     [ObservableProperty] private AppTheme _theme = AppTheme.Dark;
@@ -51,12 +52,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _patToken  = string.Empty;
     [ObservableProperty] private string _patStatus = string.Empty;
 
-    // Bitbucket App Password (Bitbucket has no Device Flow; App Password is the equivalent)
-    [ObservableProperty] private bool    _isBitbucketConnected;
-    [ObservableProperty] private string? _bitbucketDisplayName;
-    [ObservableProperty] private string  _bitbucketUsername    = string.Empty;
-    [ObservableProperty] private string  _bitbucketAppPassword = string.Empty;
-    [ObservableProperty] private string  _bitbucketStatus      = string.Empty;
+    // Raw Git credential (username + password for any HTTPS remote)
+    [ObservableProperty] private string _rawGitRemoteUrl = string.Empty;
+    [ObservableProperty] private string _rawGitUsername   = string.Empty;
+    [ObservableProperty] private string _rawGitPassword   = string.Empty;
+    [ObservableProperty] private bool   _isRawGitConnected;
+    [ObservableProperty] private string _rawGitStatus     = string.Empty;
 
     // Local → GitHub migration
     [ObservableProperty] private bool   _isLocalMode;
@@ -75,16 +76,18 @@ public partial class SettingsViewModel : ObservableObject
         LocalPrefsService? prefs = null,
         IGitSyncService? syncService = null,
         IDeviceIdService? deviceIdService = null,
-        IKeychainService? keychain = null)
+        IKeychainService? keychain = null,
+        IRawGitCredentialService? rawGitCredential = null)
     {
-        _oauth        = oauth;
-        _vault        = vault;
-        _sessionLock  = sessionLock;
-        _themeService = themeService ?? new ThemeService();
-        _prefs        = prefs        ?? new LocalPrefsService();
-        _syncService  = syncService;
-        _keychain     = keychain ?? KeychainServiceFactory.Create();
-        _deviceId     = deviceIdService?.GetDeviceId() ?? string.Empty;
+        _oauth             = oauth;
+        _vault             = vault;
+        _sessionLock       = sessionLock;
+        _themeService      = themeService ?? new ThemeService();
+        _prefs             = prefs        ?? new LocalPrefsService();
+        _syncService       = syncService;
+        _keychain          = keychain ?? KeychainServiceFactory.Create();
+        _rawGitCredential  = rawGitCredential;
+        _deviceId          = deviceIdService?.GetDeviceId() ?? string.Empty;
 
         IsVaultUnlocked = sessionLock.IsUnlocked;
         var saved = _prefs.Load();
@@ -199,35 +202,39 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    // Bitbucket App Password auth.
-    // Create at: bitbucket.org/account/settings/app-passwords/new
-    // Required scopes: Account (read), Repositories (read, write).
+    // Raw Git credential auth (username + password for any HTTPS remote).
     [RelayCommand]
-    private async Task ConnectBitbucketAsync()
+    private async Task ConnectRawGitAsync()
     {
-        BitbucketStatus = "Validating…";
+        if (_rawGitCredential is null) return;
+
+        RawGitStatus = "Validating…";
         try
         {
-            var identity = await _oauth.AuthenticateWithBitbucketAppPasswordAsync(
-                BitbucketUsername.Trim(), BitbucketAppPassword.Trim());
-            IsBitbucketConnected  = true;
-            BitbucketDisplayName  = identity.Username;
-            BitbucketStatus       = $"Connected as {identity.Username}";
-            BitbucketAppPassword  = string.Empty;
+            var identity = await _rawGitCredential.ValidateAsync(
+                RawGitRemoteUrl.Trim(), RawGitUsername.Trim(), RawGitPassword.Trim());
+            _rawGitCredential.Store(identity.RemoteUrl, RawGitUsername.Trim(), RawGitPassword.Trim());
+            IsRawGitConnected = true;
+            RawGitStatus      = $"Connected as {identity.Username}";
+            RawGitPassword    = string.Empty;
         }
         catch (Exception ex)
         {
-            BitbucketStatus = $"Error: {ex.Message}";
+            RawGitStatus = $"Error: {ex.Message}";
         }
     }
 
     [RelayCommand]
-    private async Task DisconnectBitbucketAsync()
+    private void DisconnectRawGit()
     {
-        await _oauth.RevokeAsync(OAuthProvider.Bitbucket);
-        IsBitbucketConnected = false;
-        BitbucketDisplayName = null;
-        BitbucketStatus      = string.Empty;
+        if (_rawGitCredential is null) return;
+
+        _rawGitCredential.Delete(RawGitRemoteUrl);
+        IsRawGitConnected = false;
+        RawGitRemoteUrl   = string.Empty;
+        RawGitUsername    = string.Empty;
+        RawGitPassword    = string.Empty;
+        RawGitStatus      = string.Empty;
     }
 
     // ── Local → GitHub migration ───────────────────────────────────────────────

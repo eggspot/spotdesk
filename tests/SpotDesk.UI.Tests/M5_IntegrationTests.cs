@@ -164,22 +164,6 @@ public class M5_SettingsViewModelIntegrationTests
     }
 
     [Fact, Trait("Category", "M5")]
-    public async Task ConnectBitbucket_ValidCreds_SetsConnected()
-    {
-        var oauth = Substitute.For<IOAuthService>();
-        oauth.AuthenticateWithBitbucketAppPasswordAsync("bbuser", "app_pass")
-            .Returns(Task.FromResult(new BitbucketIdentity("bb-uid", "bbuser", "bb-token")));
-
-        var vm = CreateSettingsVm(oauth: oauth);
-        vm.BitbucketUsername = "bbuser";
-        vm.BitbucketAppPassword = "app_pass";
-        await vm.ConnectBitbucketCommand.ExecuteAsync(null);
-
-        Assert.True(vm.IsBitbucketConnected);
-        Assert.Equal("bbuser", vm.BitbucketDisplayName);
-    }
-
-    [Fact, Trait("Category", "M5")]
     public void CanMigrate_LocalModeAndConnected_IsTrue()
     {
         var vm = CreateSettingsVm();

@@ -219,10 +219,6 @@ public partial class MainWindow : Window
                 settingsVm.IsGitHubConnected = true;
                 settingsVm.GithubLogin       = github.Login;
                 break;
-            case SpotDesk.Core.Auth.BitbucketIdentity bitbucket:
-                settingsVm.IsBitbucketConnected = true;
-                settingsVm.BitbucketDisplayName = bitbucket.Username;
-                break;
         }
     }
 

@@ -17,7 +17,7 @@ public enum UnlockResult
 public interface IVaultService
 {
     /// <summary>
-    /// Tries to unlock using the stored GitHub/Bitbucket credential.
+    /// Tries to unlock using the stored GitHub credential.
     /// Returns <see cref="UnlockResult.NeedsPassword"/> if the vault is in local mode.
     /// </summary>
     Task<UnlockResult> UnlockAsync(string vaultPath, CancellationToken ct = default);
@@ -32,7 +32,7 @@ public interface IVaultService
 
     /// <summary>
     /// Creates a new local-mode vault encrypted with <paramref name="password"/>.
-    /// No GitHub/Bitbucket account required. Git sync is not available in this mode.
+    /// No GitHub account required. Git sync is not available in this mode.
     /// </summary>
     Task FirstTimeSetupLocalAsync(string password, string vaultPath, CancellationToken ct = default);
 

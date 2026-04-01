@@ -7,15 +7,13 @@ using System.Text.Json.Serialization;
 namespace SpotDesk.Core.Auth;
 
 public record GitHubIdentity(long UserId, string Login, string AccessToken);
-public record BitbucketIdentity(string UserId, string Username, string AccessToken);
 
-public enum OAuthProvider { GitHub, Bitbucket }
+public enum OAuthProvider { GitHub }
 
 public interface IOAuthService
 {
     // ── Browser / redirect flows ──────────────────────────────────────────
     Task<GitHubIdentity> AuthenticateGitHubAsync(CancellationToken ct = default);
-    Task<BitbucketIdentity> AuthenticateBitbucketAsync(CancellationToken ct = default);
 
     // ── PAT (Personal Access Token) — no OAuth App required ──────────────
     /// <summary>
@@ -39,17 +37,6 @@ public interface IOAuthService
     /// </summary>
     Task<GitHubIdentity> PollGitHubDeviceFlowAsync(DeviceFlowChallenge challenge, CancellationToken ct = default);
 
-    // ── Bitbucket App Password — no OAuth consumer required ──────────────
-    /// <summary>
-    /// Validates a Bitbucket App Password against the API, stores it in the keychain,
-    /// and caches the identity. Bitbucket App Passwords use HTTP Basic auth
-    /// (username + app password) and support the same repo scopes as OAuth tokens.
-    /// Create one at: bitbucket.org/account/settings/app-passwords/new
-    /// Required permissions: Account (read), Repositories (read, write).
-    /// </summary>
-    Task<BitbucketIdentity> AuthenticateWithBitbucketAppPasswordAsync(
-        string username, string appPassword, CancellationToken ct = default);
-
     // ── Shared ────────────────────────────────────────────────────────────
     Task<GitHubIdentity> GetCachedIdentityAsync(CancellationToken ct = default);
     Task<bool> IsAuthenticatedAsync(OAuthProvider provider, CancellationToken ct = default);
@@ -68,7 +55,7 @@ public class OAuthService : IOAuthService
     public OAuthService(IKeychainService keychain, OAuthClientConfig? config = null, HttpClient? http = null)
     {
         _keychain = keychain;
-        _config   = config ?? OAuthClientConfig.Resolve(null, null, null);
+        _config   = config ?? OAuthClientConfig.Resolve(null);
         _http     = http ?? new HttpClient();
         _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "SpotDesk/1.0");
     }
@@ -123,60 +110,6 @@ public class OAuthService : IOAuthService
         return await FetchGitHubIdentityAsync(tokenData.AccessToken, ct);
     }
 
-    public async Task<BitbucketIdentity> AuthenticateBitbucketAsync(CancellationToken ct = default)
-    {
-        var port        = GetFreePort();
-        var redirectUri = $"http://localhost:{port}/callback";
-        var (verifier, challenge) = GeneratePkce();
-        var state       = GenerateState();
-
-        if (!_config.IsBitbucketConfigured)
-            throw new InvalidOperationException(
-                "Bitbucket credentials are not configured. " +
-                "Go to Settings → OAuth to enter your Bitbucket OAuth credentials.");
-
-        var authUrl = "https://bitbucket.org/site/oauth2/authorize" +
-            $"?client_id={Uri.EscapeDataString(_config.BitbucketClientId)}" +
-            $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
-            $"&scope={Uri.EscapeDataString("account")}" +
-            $"&state={Uri.EscapeDataString(state)}" +
-            $"&code_challenge={Uri.EscapeDataString(challenge)}" +
-            $"&code_challenge_method=S256" +
-            $"&response_type=code";
-
-        var code = await RunBrowserFlowAsync(authUrl, port, state, ct);
-
-        var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(
-            $"{_config.BitbucketClientId}:{_config.BitbucketClientSecret}"));
-
-        using var req = new HttpRequestMessage(HttpMethod.Post, "https://bitbucket.org/site/oauth2/access_token")
-        {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["grant_type"]    = "authorization_code",
-                ["code"]          = code,
-                ["redirect_uri"]  = redirectUri,
-                ["code_verifier"] = verifier,
-            })
-        };
-        req.Headers.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
-
-        var resp = await _http.SendAsync(req, ct);
-        resp.EnsureSuccessStatusCode();
-        var tokenData = await resp.Content.ReadFromJsonAsync(BitbucketTokenContext.Default.BitbucketTokenResponse, ct)
-            ?? throw new InvalidDataException("Bitbucket token response was null");
-
-        _keychain.Store(KeychainKeys.Bitbucket, tokenData.AccessToken);
-
-        var user = await _http.GetFromJsonAsync<BitbucketUserResponse>(
-            "https://api.bitbucket.org/2.0/user",
-            BitbucketJsonContext.Default.BitbucketUserResponse, ct)
-            ?? throw new InvalidDataException("Bitbucket user API returned null");
-
-        return new BitbucketIdentity(user.AccountId, user.Username, tokenData.AccessToken);
-    }
-
     // ── PAT (Personal Access Token) ──────────────────────────────────────────
 
     public async Task<GitHubIdentity> AuthenticateWithPatAsync(string pat, CancellationToken ct = default)
@@ -186,24 +119,6 @@ public class OAuthService : IOAuthService
 
         var identity = await FetchGitHubIdentityAsync(pat.Trim(), ct);
         _keychain.Store(KeychainKeys.GitHub, pat.Trim());
-        return identity;
-    }
-
-    // ── Bitbucket App Password ────────────────────────────────────────────────
-
-    public async Task<BitbucketIdentity> AuthenticateWithBitbucketAppPasswordAsync(
-        string username, string appPassword, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(username))
-            throw new ArgumentException("Bitbucket username must not be empty.", nameof(username));
-        if (string.IsNullOrWhiteSpace(appPassword))
-            throw new ArgumentException("App password must not be empty.", nameof(appPassword));
-
-        var identity = await FetchBitbucketIdentityAsync(username.Trim(), appPassword.Trim(), ct);
-
-        // Store as "username:appPassword" — the exact Basic auth credential
-        // that LibGit2Sharp needs when pushing/pulling the vault repo.
-        _keychain.Store(KeychainKeys.Bitbucket, $"{username.Trim()}:{appPassword.Trim()}");
         return identity;
     }
 
@@ -322,15 +237,13 @@ public class OAuthService : IOAuthService
 
     public Task<bool> IsAuthenticatedAsync(OAuthProvider provider, CancellationToken ct = default)
     {
-        var key = provider == OAuthProvider.GitHub ? KeychainKeys.GitHub : KeychainKeys.Bitbucket;
-        return Task.FromResult(_keychain.Retrieve(key) is not null);
+        return Task.FromResult(_keychain.Retrieve(KeychainKeys.GitHub) is not null);
     }
 
     public Task RevokeAsync(OAuthProvider provider)
     {
-        var key = provider == OAuthProvider.GitHub ? KeychainKeys.GitHub : KeychainKeys.Bitbucket;
-        _keychain.Delete(key);
-        if (provider == OAuthProvider.GitHub) _githubCache = null;
+        _keychain.Delete(KeychainKeys.GitHub);
+        _githubCache = null;
         return Task.CompletedTask;
     }
 
@@ -351,26 +264,6 @@ public class OAuthService : IOAuthService
         _githubCache       = identity;
         _githubCacheExpiry = DateTimeOffset.UtcNow.AddHours(24);
         return identity;
-    }
-
-    private async Task<BitbucketIdentity> FetchBitbucketIdentityAsync(
-        string username, string appPassword, CancellationToken ct)
-    {
-        var credentials = Convert.ToBase64String(
-            Encoding.UTF8.GetBytes($"{username}:{appPassword}"));
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.bitbucket.org/2.0/user");
-        request.Headers.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
-
-        var response = await _http.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
-
-        var user = await response.Content.ReadFromJsonAsync(
-            BitbucketJsonContext.Default.BitbucketUserResponse, ct)
-            ?? throw new InvalidDataException("Bitbucket user API returned null");
-
-        return new BitbucketIdentity(user.AccountId, user.Username, appPassword);
     }
 
     private static async Task<string> RunBrowserFlowAsync(
@@ -477,30 +370,11 @@ internal record GitHubTokenResponse
     [JsonPropertyName("scope")]        public string Scope        { get; init; } = string.Empty;
 }
 
-internal record BitbucketUserResponse
-{
-    [JsonPropertyName("account_id")] public string AccountId { get; init; } = string.Empty;
-    [JsonPropertyName("username")]   public string Username  { get; init; } = string.Empty;
-}
-
-internal record BitbucketTokenResponse
-{
-    [JsonPropertyName("access_token")]  public string AccessToken  { get; init; } = string.Empty;
-    [JsonPropertyName("token_type")]    public string TokenType    { get; init; } = string.Empty;
-    [JsonPropertyName("refresh_token")] public string RefreshToken { get; init; } = string.Empty;
-}
-
 [JsonSerializable(typeof(GitHubUserResponse))]
 internal partial class GitHubJsonContext : JsonSerializerContext;
 
 [JsonSerializable(typeof(GitHubTokenResponse))]
 internal partial class GitHubTokenContext : JsonSerializerContext;
-
-[JsonSerializable(typeof(BitbucketUserResponse))]
-internal partial class BitbucketJsonContext : JsonSerializerContext;
-
-[JsonSerializable(typeof(BitbucketTokenResponse))]
-internal partial class BitbucketTokenContext : JsonSerializerContext;
 
 internal record DeviceCodeResponse
 {
